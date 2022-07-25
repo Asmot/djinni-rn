@@ -31,6 +31,11 @@ import scala.util.matching.Regex
 package object generatorTools {
 
   case class Spec(
+
+                   rn_javaOutFolder: Option[File] = None,
+                   rn_javaPackage: Option[String] = None,
+
+
                    javaOutFolder: Option[File],
                    javaPackage: Option[String],
                    javaClassAccessModifier: JavaAccessModifier.Value,
@@ -258,6 +263,12 @@ package object generatorTools {
           createFolder("Java", spec.javaOutFolder.get)
         }
         new JavaGenerator(spec).generate(idl)
+      }
+      if (spec.rn_javaOutFolder.isDefined) {
+        if (!spec.skipGeneration) {
+          createFolder("Java", spec.rn_javaOutFolder.get)
+        }
+        new RNJavaGenerator(spec).generate(idl)
       }
       if (spec.jniOutFolder.isDefined) {
         if (!spec.skipGeneration) {

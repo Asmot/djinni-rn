@@ -27,6 +27,7 @@ wasm_out="$base_dir/generated-src/wasm"
 ts_out="$base_dir/generated-src/ts"
 
 java_package="com.dropbox.textsort"
+rn_java_package="com.smap.android.react.maps"
 
 gen_stamp="$temp_out/gen.stamp"
 
@@ -60,6 +61,9 @@ fi
     --java-nonnull-annotation "javax.annotation.Nonnull" \
     --ident-java-field mFooBar \
     \
+    --rn-java-out "$temp_out/rn_java" \
+    --rn-java-package $rn_java_package \
+    \
     --cpp-out "$temp_out/cpp" \
     --cpp-namespace textsort \
     --ident-cpp-enum-type foo_bar \
@@ -76,6 +80,10 @@ fi
     --wasm-out "$temp_out/wasm" \
     --ts-out "$temp_out/ts" \
     --ts-module "example" \
+    \
+    --yaml-out "$temp_out/yaml" \
+    --yaml-out-file "yaml-test.yaml" \
+    --yaml-prefix "test_" \
     \
     --idl "$in"
 

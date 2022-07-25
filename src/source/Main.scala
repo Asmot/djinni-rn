@@ -42,6 +42,11 @@ object Main {
     var cppUseWideStrings: Boolean = false
     var javaOutFolder: Option[File] = None
     var javaPackage: Option[String] = None
+
+    var rn_javaOutFolder: Option[File] = None
+    var rn_javaPackage: Option[String] = None
+
+
     var javaClassAccessModifier: JavaAccessModifier.Value = JavaAccessModifier.Public
     var javaCppException: Option[String] = None
     var javaAnnotation: Option[String] = None
@@ -126,6 +131,12 @@ object Main {
         .text("The output for the Java files (Generator disabled if unspecified).")
       opt[String]("java-package").valueName("...").foreach(x => javaPackage = Some(x))
         .text("The package name to use for generated Java classes.")
+
+      opt[File]("rn-java-out").valueName("<out-folder>").foreach(x => rn_javaOutFolder = Some(x))
+        .text("The output for the Java files (Generator disabled if unspecified).")
+      opt[String]("rn-java-package").valueName("...").foreach(x => rn_javaPackage = Some(x))
+        .text("The package name to use for generated Java classes.")
+       
       opt[JavaAccessModifier.Value]("java-class-access-modifier").valueName("<public/package>").foreach(x => javaClassAccessModifier = x)
         .text("The access modifier to use for generated Java classes (default: public).")
       opt[String]("java-cpp-exception").valueName("<exception-class>").foreach(x => javaCppException = Some(x))
@@ -363,6 +374,8 @@ object Main {
     }
 
     val outSpec = Spec(
+      rn_javaOutFolder,
+      rn_javaPackage,
       javaOutFolder,
       javaPackage,
       javaClassAccessModifier,
