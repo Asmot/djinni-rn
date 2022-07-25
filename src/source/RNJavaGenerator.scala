@@ -39,6 +39,8 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
   val javaClassAccessModifierString = JavaAccessModifier.getCodeGenerationString(spec.javaClassAccessModifier)
   val marshal = new JavaMarshal(spec)
 
+  var PRE_STR = "SRN"
+
   class JavaRefs() {
     var java = mutable.TreeSet[String]()
 
@@ -161,6 +163,16 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
       refs.java.add("com.snapchat.djinni.NativeObjectManager")
     }
 
+     // rn java
+    refs.java.add("com.facebook.react.bridge.ReactApplicationContext");
+    refs.java.add("com.facebook.react.bridge.ReadableMap");
+    refs.java.add("com.facebook.react.uimanager.ViewGroupManager");
+    refs.java.add("com.facebook.react.uimanager.annotations.ReactProp");
+    refs.java.add("com.facebook.react.uimanager.ThemedReactContext");
+    
+    // for smap TODO add to spec
+    refs.java.add("com.smap.maps.model.*");
+
     def writeModuleInitializer(w: IndentWriter) = {
       if (spec.jniUseOnLoad) {
         w.wl("static").braced {
@@ -173,78 +185,135 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
         }
       }
     }
+    val javaClass = marshal.typename(ident, i)
+    val typeParamList = javaTypeParams(typeParams)
+    var javaName = s"${PRE_STR}$javaClass${typeParamList}Manager"
+    var javaNameView = s"${PRE_STR}$javaClass"
 
-    writeJavaFile(ident, origin, refs.java, w => {
-      val javaClass = marshal.typename(ident, i)
-      val typeParamList = javaTypeParams(typeParams)
+    writeJavaFile(javaName, origin, refs.java, w => {
+      
       writeDoc(w, doc)
 
       javaAnnotationHeader.foreach(w.wl)
-      w.w(s"${javaClassAccessModifierString}abstract class $javaClass$typeParamList").braced {
+      w.w(s"${javaClassAccessModifierString} class ${javaName} extends ViewGroupManager<${javaNameView}>").braced {
+        // pre text
+        w.wl("ReactApplicationContext mCallerContext;")
+        w.wl("""public static final String REACT_CLASS = "SRNMarkerManager";""")
+        w.wl("")
+        w.wl("public SRNMarkerManager(ReactApplicationContext reactContext) {")
+        w.wl("    this.mCallerContext = reactContext;")
+        w.wl("}")
+        w.wl("@Override")
+        w.wl("public String getName() {")
+        w.wl("    return REACT_CLASS;")
+        w.wl("}")
+
+
         val skipFirst = SkipFirst()
         generateJavaConstants(w, i.consts)
 
         val throwException = spec.javaCppException.fold("")(" throws " + _)
+
+        // no return will set to prop
         for (m <- i.methods if !m.static) {
-          skipFirst { w.wl }
-          writeMethodDoc(w, m, idJava.local)
-          val ret = marshal.returnType(m.ret)
-          val params = m.params.map(p => {
-            val nullityAnnotation = marshal.nullityAnnotation(p.ty).map(_ + " ").getOrElse("")
-            nullityAnnotation + marshal.paramType(p.ty) + " " + idJava.local(p.ident)
-          })
-          marshal.nullityAnnotation(m.ret).foreach(w.wl)
-          w.wl("public abstract " + ret + " " + idJava.method(m.ident) + params.mkString("(", ", ", ")") + throwException + ";")
-        }
-
-        val statics = i.methods.filter(m => m.static && m.lang.java)
-
-        if (statics.nonEmpty) {
-          writeModuleInitializer(w)
-        }
-        for (m <- statics) {
-          skipFirst {
-            w.wl
-          }
-          writeMethodDoc(w, m, idJava.local)
-          val ret = marshal.returnType(m.ret)
-          val params = m.params.map(p => {
-            val nullityAnnotation = marshal.nullityAnnotation(p.ty).map(_ + " ").getOrElse("")
-            nullityAnnotation + marshal.paramType(p.ty) + " " + idJava.local(p.ident)
-          })
-          marshal.nullityAnnotation(m.ret).foreach(w.wl)
-          w.wl("public static native " + ret + " " + idJava.method(m.ident) + params.mkString("(", ", ", ")") + ";")
-        }
-        if (i.ext.cpp) {
-          w.wl
-          javaAnnotationHeader.foreach(w.wl)
-          w.wl(s"public static final class CppProxy$typeParamList extends $javaClass$typeParamList").braced {
-            writeModuleInitializer(w)
-            w.wl("private final long nativeRef;")
-            w.wl("private final AtomicBoolean destroyed = new AtomicBoolean(false);")
-            w.wl
-            w.wl(s"private CppProxy(long nativeRef)").braced {
-              w.wl("if (nativeRef == 0) throw new RuntimeException(\"nativeRef is zero\");")
-              w.wl("this.nativeRef = nativeRef;")
-              w.wl("NativeObjectManager.register(this, nativeRef);")
-            }
-            w.wl("public static native void nativeDestroy(long nativeRef);")
-            for (m <- i.methods if !m.static) { // Static methods not in CppProxy
+          // only generate with annotation
+          m.annotation.getOrElse(None) match {
+            case Annotation(ident, value) => {
+              
+              skipFirst { w.wl }
+              writeMethodDoc(w, m, idJava.local)
               val ret = marshal.returnType(m.ret)
-              val returnStmt = m.ret.fold("")(_ => "return ")
-              val params = m.params.map(p => marshal.paramType(p.ty) + " " + idJava.local(p.ident)).mkString(", ")
-              val args = m.params.map(p => idJava.local(p.ident)).mkString(", ")
-              val meth = idJava.method(m.ident)
-              w.wl
-              w.wl(s"@Override")
-              w.wl(s"public $ret $meth($params)$throwException").braced {
-                w.wl("assert !this.destroyed.get() : \"trying to use a destroyed object\";")
-                w.wl(s"${returnStmt}native_$meth(this.nativeRef${preComma(args)});")
+              val params = m.params.map(p => {
+                val nullityAnnotation = marshal.nullityAnnotation(p.ty).map(_ + " ").getOrElse("")
+                nullityAnnotation + marshal.paramType(p.ty) + " " + idJava.local(p.ident)
+              })
+              marshal.nullityAnnotation(m.ret).foreach(w.wl)
+
+              if (m.params.length == 1) {
+                val parm_field = m.params(0);
+
+                w.wl(s"""@ReactProp(name = ${value})""")
+                w.w(s"public void " + idJava.method(m.ident) + s"(${javaNameView} view, ReadableMap data)").braced {
+                  // get value
+                  parm_field.ty.resolved.base match {
+                    case t: MPrimitive => t.jName match {
+                      case "byte" | "short" | "int" | "float" | "double" | "long"   
+                          => w.wl(s"${t.jName} v = (${t.jName})data.getDouble(${parm_field.ident.name});")
+                      case "boolean"
+                          => w.wl(s"${t.jName} v = data.getBoolean(${parm_field.ident.name});")
+                    }
+                    case df: MDef => df.defType match {
+                      
+                      case DRecord => w.wl(s"${marshal.paramType(parm_field.ty)} v = ${PRE_STR}${parm_field.ident.name}.fromReadableMap(data);")
+                    }
+                    case _ => w.wl(s"// not support! ${parm_field.ident.name}")
+                  }
+                  // set value to native
+                  w.wl("if (view.getMapOverlay() != null) {")
+                  w.wl(s"    view.getMapOverlay().${m.ident.name}(v);")
+                  w.wl("} else {")
+                  w.wl(s"    view.getMapOverlayOptions().${parm_field.ident.name} = v;")
+                  w.wl("}")
+                }
+
               }
-              w.wl(s"private native $ret native_$meth(long _nativeRef${preComma(params)});")
+              
+              
             }
+            case None => {};
           }
+          
         }
+
+        // val statics = i.methods.filter(m => m.static && m.lang.java)
+
+        // if (statics.nonEmpty) {
+        //   writeModuleInitializer(w)
+        // }
+        // for (m <- statics) {
+        //   skipFirst {
+        //     w.wl
+        //   }
+        //   writeMethodDoc(w, m, idJava.local)
+        //   val ret = marshal.returnType(m.ret)
+        //   val params = m.params.map(p => {
+        //     val nullityAnnotation = marshal.nullityAnnotation(p.ty).map(_ + " ").getOrElse("")
+        //     nullityAnnotation + marshal.paramType(p.ty) + " " + idJava.local(p.ident)
+        //   })
+        //   marshal.nullityAnnotation(m.ret).foreach(w.wl)
+        //   w.wl("public static native " + ret + " " + idJava.method(m.ident) + params.mkString("(", ", ", ")") + ";")
+        // }
+
+        // if (i.ext.cpp) {
+        //   w.wl
+        //   javaAnnotationHeader.foreach(w.wl)
+        //   w.wl(s"public static final class CppProxy$typeParamList extends $javaClass$typeParamList").braced {
+        //     writeModuleInitializer(w)
+        //     w.wl("private final long nativeRef;")
+        //     w.wl("private final AtomicBoolean destroyed = new AtomicBoolean(false);")
+        //     w.wl
+        //     w.wl(s"private CppProxy(long nativeRef)").braced {
+        //       w.wl("if (nativeRef == 0) throw new RuntimeException(\"nativeRef is zero\");")
+        //       w.wl("this.nativeRef = nativeRef;")
+        //       w.wl("NativeObjectManager.register(this, nativeRef);")
+        //     }
+        //     w.wl("public static native void nativeDestroy(long nativeRef);")
+        //     for (m <- i.methods if !m.static) { // Static methods not in CppProxy
+        //       val ret = marshal.returnType(m.ret)
+        //       val returnStmt = m.ret.fold("")(_ => "return ")
+        //       val params = m.params.map(p => marshal.paramType(p.ty) + " " + idJava.local(p.ident)).mkString(", ")
+        //       val args = m.params.map(p => idJava.local(p.ident)).mkString(", ")
+        //       val meth = idJava.method(m.ident)
+        //       w.wl
+        //       w.wl(s"@Override")
+        //       w.wl(s"public $ret $meth($params)$throwException").braced {
+        //         w.wl("assert !this.destroyed.get() : \"trying to use a destroyed object\";")
+        //         w.wl(s"${returnStmt}native_$meth(this.nativeRef${preComma(args)});")
+        //       }
+        //       w.wl(s"private native $ret native_$meth(long _nativeRef${preComma(params)});")
+        //     }
+        //   }
+        // }
       }
     })
   }
@@ -260,7 +329,6 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
     // for smap TODO add to spec
     refs.java.add("com.smap.maps.model.*");
 
-    var PRE_STR = "SRN"
     val javaName = if (r.ext.java) (ident.name + "_base") else (PRE_STR + ident.name)
     val javaFinal = if (!r.ext.java && spec.javaUseFinalForRecord) "public final " else ""
 
@@ -416,9 +484,9 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
               }
               case df: MDef => df.defType match {
                 case DRecord => w.wl(s"""result.putMap("${f.ident.name}", ${PRE_STR}${marshal.typename(f.ty)}.toWritableMap(item.${f.ident.name}));""")
-                case _ => throw new AssertionError("Unreachable")
+                case _ => w.wl(s"// not support! ${f.ident.name}")//throw new AssertionError("Unreachable")
               }
-              case _ => w.wl("// not support!")
+              case _ => w.wl(s"// not support! ${f.ident.name}")
             }
           }
           w.wl("return result;")
@@ -458,9 +526,9 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
                     w.wl(s"""if (data.hasKey("${f.ident.name}")) {""")
                     w.wl(s"""   result.${f.ident.name} = ${PRE_STR}${marshal.typename(f.ty)}.fromReadableMap(data.getMap("${f.ident.name}"));""")
                     w.wl(s"}")
-                case _ => throw new AssertionError("Unreachable")
+                case _ => w.wl(s"// not support! ${f.ident.name}")
               }
-              case _ => w.wl("// not support!")
+              case _ => w.wl(s"// not support! ${f.ident.name}")
             }
           }
           w.wl("return result;")
