@@ -187,8 +187,9 @@ private object IdlParser extends RegexParsers {
     case "const " => true
     case "" => false
   }
-  def method: Parser[Interface.Method] = doc ~ staticLabel ~ constLabel ~ ident ~ parens(repsepend(field, ",")) ~ opt(ret) ~ supportLang ^^ {
-    case doc~staticLabel~constLabel~ ident~params~ret~ext => Interface.Method(ident, params, ret, doc, staticLabel, constLabel, ext)
+  
+  def method: Parser[Interface.Method] = doc ~ opt(annotation) ~ staticLabel ~ constLabel ~ ident ~ parens(repsepend(field, ",")) ~ opt(ret) ~ supportLang ^^ {
+    case doc~annotation~staticLabel~constLabel~ident~params~ret~ext => Interface.Method(ident, params, ret, doc, staticLabel, constLabel, ext, annotation)
   }
   def ret: Parser[TypeRef] = ":" ~> typeRef
 
@@ -211,6 +212,15 @@ private object IdlParser extends RegexParsers {
     case doc~_~ident~_~typeRef~_~value => Const(ident, typeRef, value, doc)
   }
 
+  // @ReactProp:"coordnate"
+  def annotation: Parser[Annotation] = "@" ~ ident ~ ":" ~ stringValue^^ {
+    case ident~_~stringValue => { 
+      // System.out.println(ident)
+      // System.out.println("value " + stringValue)
+      Annotation(ident, stringValue)
+    }
+  }
+
   def typeRef: Parser[TypeRef] = typeExpr ^^ TypeRef
   def typeExpr: Parser[TypeExpr] = ident ~ typeList(typeExpr) ^^ {
     case ident~typeArgs => TypeExpr(ident, typeArgs)
@@ -220,6 +230,27 @@ private object IdlParser extends RegexParsers {
     case (s, p) => Ident(s, fileStack.top, p)
   }
 
+// ^^ (_.substring(1))) ^^ Doc
+  def anno_value: Parser[String] = regex("""\"[A-Za-z_][A-Za-z_0-9]*\"""".r) ^^ (_.substring(1))
+  
+  // def annotation(str: String): Annotation = {
+  //   val annotationName = regex("""@[A-Za-z_][A-Za-z_0-9]*""".r)
+  //   val annotationValue = regex("""\([A-Za-z_][A-Za-z_0-9]*\)""".r)
+  //   // if (annotationExist) {
+  //   //   // remove @
+  //   //   val name = annotationExist.substring(1)
+  //   //   if (annotationValue) {
+  //   //     val value = annotationExist.substring(1, annotationExist.length - 1);
+  //   //     Annotation(name, value);
+  //   //   } else {
+  //   //     Annotation(name, "")
+  //   //   }
+  //   // } else {
+  //   //   Annotation("","")
+  //   // }
+  //   Annotation("","")
+  // }
+ 
   def doc: Parser[Doc] = rep(regex("""#[^\n\r]*""".r) ^^ (_.substring(1))) ^^ Doc
 
   def parens[T](inner: Parser[T]): Parser[T] = surround("(", ")", inner)

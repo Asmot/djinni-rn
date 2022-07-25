@@ -63,6 +63,11 @@ case class TypeExpr(ident: Ident, args: Seq[TypeExpr])
 
 sealed abstract class TypeDef
 
+// eg @ReactProp(coordnate)
+// name is ReactProp value is coordnate
+case class Annotation(name: Any, value: String)
+
+
 case class Const(ident: Ident, ty: TypeRef, value: Any, doc: Doc)
 
 case class Enum(options: Seq[Enum.Option], flags: Boolean) extends TypeDef
@@ -85,7 +90,7 @@ object Record {
 
 case class Interface(ext: Ext, methods: Seq[Interface.Method], consts: Seq[Const]) extends TypeDef
 object Interface {
-  case class Method(ident: Ident, params: Seq[Field], ret: Option[TypeRef], doc: Doc, static: Boolean, const: Boolean, lang: Ext)
+  case class Method(ident: Ident, params: Seq[Field], ret: Option[TypeRef], doc: Doc, static: Boolean, const: Boolean, lang: Ext, annotation : Option[Annotation])
 }
 
 case class Field(ident: Ident, ty: TypeRef, doc: Doc)
