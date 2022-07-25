@@ -31,6 +31,7 @@ import scala.collection.mutable
 import scala.util.control.Breaks._
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.{Position, Positional}
+import djinni.utils._
 
 case class Parser(includePaths: List[String]) {
 
@@ -278,28 +279,9 @@ private object IdlParser extends RegexParsers {
 
 def toLoc(file: File, pos: Position) = Loc(file, pos.line, pos.column)
 
-def slurpReader(in: java.io.Reader): String = {
-  var buf = new Array[Char](4 * 1024)
-  var pos = 0
-  while (true) {
-    val space = buf.length - pos
-    val read = in.read(buf, pos, space)
-    if (read == -1) {
-      val r = new Array[Char](pos)
-      return new String(buf, 0, pos)
-    }
-    pos += read
-    if (pos >= buf.length) {
-      val newBuf = new Array[Char](buf.length * 2)
-      System.arraycopy(buf, 0, newBuf, 0, pos)
-      buf = newBuf
-    }
-  }
-  throw new AssertionError("unreachable")  // stupid Scala
-}
 
 def parse(origin: String, in: java.io.Reader): Either[Error,IdlFile] = {
-  val s = slurpReader(in)
+  val s = utils.slurpReader(in)
   IdlParser.parseAll(IdlParser.idlFile(origin), s) match {
     case IdlParser.Success(v: IdlFile, _) => Right(v)
     case IdlParser.NoSuccess(msg, input) => Left(Error(toLoc(fileStack.top, input.pos), msg))
@@ -420,12 +402,10 @@ def parseProtobufFile(protobufFile: File, inFileListWriter: Option[Writer]) : Se
   }
 }
 
-def normalizePath(path: File) : File = {
-  return new File(java.nio.file.Paths.get(path.toString()).normalize().toString())
-}
+
 
 def parseFile(idlFile: File, inFileListWriter: Option[Writer]): (Seq[TypeDecl], Seq[String]) = {
-  val normalizedIdlFile = normalizePath(idlFile)
+  val normalizedIdlFile = utils.normalizePath(idlFile)
   if (inFileListWriter.isDefined) {
     inFileListWriter.get.write(normalizedIdlFile + "\n")
   }
@@ -442,7 +422,7 @@ def parseFile(idlFile: File, inFileListWriter: Option[Writer]): (Seq[TypeDecl], 
         var types = idl.typeDecls
         var flags = idl.flags
         idl.imports.foreach(x => {
-          val normalized = normalizePath(x.file)
+          val normalized = utils.normalizePath(x.file)
           if (fileStack.contains(normalized)) {
             throw new AssertionError("Circular import detected!")
           }

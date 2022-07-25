@@ -23,10 +23,14 @@ import djinni.ast._
 import djinni.generatorTools._
 import djinni.meta._
 import djinni.writer.IndentWriter
+import djinni.utils._
+import mustache._
+
 
 import scala.collection.mutable
 
-
+import java.io.{File, FileNotFoundException, InputStreamReader, FileInputStream, Writer}
+import java.io.StringWriter
 /*
 if is record, only generate toReadableMap and fromReadableMap
 
@@ -163,16 +167,24 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
     //   refs.java.add("com.snapchat.djinni.NativeObjectManager")
     // }
 
-     // rn java
-    refs.java.add("com.facebook.react.bridge.ReactApplicationContext");
-    refs.java.add("com.facebook.react.bridge.ReadableMap");
-    refs.java.add("com.facebook.react.uimanager.ViewGroupManager");
-    refs.java.add("com.facebook.react.uimanager.annotations.ReactProp");
-    refs.java.add("com.facebook.react.uimanager.ThemedReactContext");
-    refs.java.add("android.content.Context");
+    val rnJavaTemplate = utils.readFileCon("/Users/xiangyu.zheng/WorkSpace/cpp/djinni-rn/examples/ouput_template/rn_java/ViewManagerTemplate.java");
     
-    // for smap TODO add to spec
-    refs.java.add("com.smap.maps.model.*");
+    implicit def RichFormatter(string: String) = new {
+      def richFormat(replacement: Map[String, Any]) =
+        (string /: replacement) {(res, entry) => res.replaceAll("#\\{%s\\}".format(entry._1), entry._2.toString)}
+    }
+    
+
+    //  // rn java
+    // refs.java.add("com.facebook.react.bridge.ReactApplicationContext");
+    // refs.java.add("com.facebook.react.bridge.ReadableMap");
+    // refs.java.add("com.facebook.react.uimanager.ViewGroupManager");
+    // refs.java.add("com.facebook.react.uimanager.annotations.ReactProp");
+    // refs.java.add("com.facebook.react.uimanager.ThemedReactContext");
+    // refs.java.add("android.content.Context");
+    
+    // // for smap TODO add to spec
+    // refs.java.add("com.smap.maps.model.*");
 
     def writeModuleInitializer(w: IndentWriter) = {
       if (spec.jniUseOnLoad) {
@@ -197,30 +209,20 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
     val viewClassName = PRE_STR + javaClass
     
 
-    writeJavaFile(javaName, origin, refs.java, w => {
-      
-      writeDoc(w, doc)
+    // val formatedClassNameOutput = rnJavaTemplate richFormat Map("className" -> javaClass)
 
-      javaAnnotationHeader.foreach(w.wl)
-      w.w(s"${javaClassAccessModifierString} class ${javaName} extends ViewGroupManager<${javaName}.${javaNameView}>").braced {
-        // pre text
-        w.wl("ReactApplicationContext mCallerContext;")
-        w.wl(s"""public static final String REACT_CLASS = "${viewClassName}Manager";""")
-        w.wl("")
-        w.wl(s"public ${viewClassName}Manager(ReactApplicationContext reactContext) {")
-        w.wl("    this.mCallerContext = reactContext;")
-        w.wl("}")
-        w.wl("@Override")
-        w.wl("public String getName() {")
-        w.wl("    return REACT_CLASS;")
-        w.wl("}")
-        w.wl("@Override")
-        w.wl(s"protected ${viewClassName} createViewInstance(ThemedReactContext reactContext) {")
-        w.wl(s"  return new ${viewClassName}(reactContext, this);")
-        w.wl("}") 
+    writeJavaFile(javaName, origin, refs.java, w => {  
 
+      val stringWriter = new StringWriter();
+      val innerW = new IndentWriter(stringWriter);
+
+      // writeDoc(w, doc)
+
+      // javaAnnotationHeader.foreach(w.wl)
+      // w.w(s"${javaClassAccessModifierString} class ${javaName} extends ViewGroupManager<${javaName}.${javaNameView}>").braced {
+       
         val skipFirst = SkipFirst()
-        generateJavaConstants(w, i.consts)
+        generateJavaConstants(innerW, i.consts)
 
         val throwException = spec.javaCppException.fold("")(" throws " + _)
 
@@ -232,8 +234,8 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
           m.annotation.getOrElse(None) match {
             case Annotation(ident, value) => {
               
-              skipFirst { w.wl }
-              writeMethodDoc(w, m, idJava.local)
+              skipFirst { innerW.wl }
+              writeMethodDoc(innerW, m, idJava.local)
               val ret = marshal.returnType(m.ret)
               val params = m.params.map(p => {
                 val nullityAnnotation = marshal.nullityAnnotation(p.ty).map(_ + " ").getOrElse("")
@@ -244,31 +246,31 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
               if (m.params.length == 1) {
                 val parm_field = m.params(0);
 
-                w.wl(s"""@ReactProp(name = ${value})""")
+                innerW.wl(s"""@ReactProp(name = ${value})""")
                 // react not support setPosition and setVisbile so use value to the function name
                 val methodNameTemp = s"set_${value}"
                 val methodName = methodNameTemp.replaceAll(""""""","")
-                w.w(s"public void " + methodName + s"(${javaNameView} view, ReadableMap data)").braced {
+                innerW.w(s"public void " + methodName + s"(${javaNameView} view, ReadableMap data)").braced {
                   // get value
                   parm_field.ty.resolved.base match {
                     case t: MPrimitive => t.jName match {
                       case "byte" | "short" | "int" | "float" | "double" | "long"   
-                          => w.wl(s"""${t.jName} v = (${t.jName})data.getDouble("${parm_field.ident.name}");""")
+                          => innerW.wl(s"""${t.jName} v = (${t.jName})data.getDouble("${parm_field.ident.name}");""")
                       case "boolean"
-                          => w.wl(s"""${t.jName} v = data.getBoolean("${parm_field.ident.name}");""")
+                          => innerW.wl(s"""${t.jName} v = data.getBoolean("${parm_field.ident.name}");""")
                     }
                     case df: MDef => df.defType match {
                       
-                      case DRecord => w.wl(s"${marshal.paramType(parm_field.ty)} v = ${PRE_STR}${marshal.paramType(parm_field.ty)}.fromReadableMap(data);")
+                      case DRecord => innerW.wl(s"${marshal.paramType(parm_field.ty)} v = ${PRE_STR}${marshal.paramType(parm_field.ty)}.fromReadableMap(data);")
                     }
-                    case _ => w.wl(s"// not support! ${parm_field.ident.name}")
+                    case _ => innerW.wl(s"// not support! ${parm_field.ident.name}")
                   }
                   // set value to native
-                  w.wl("if (view.getMapOverlay() != null) {")
-                  w.wl(s"    view.getMapOverlay().${m.ident.name}(v);")
-                  w.wl("} else {")
-                  w.wl(s"    view.getMapOverlayOptions().${parm_field.ident.name} = v;")
-                  w.wl("}")
+                  innerW.wl("if (view.getMapOverlay() != null) {")
+                  innerW.wl(s"    view.getMapOverlay().${m.ident.name}(v);")
+                  innerW.wl("} else {")
+                  innerW.wl(s"    view.getMapOverlayOptions().${parm_field.ident.name} = v;")
+                  innerW.wl("}")
                 }
 
               }
@@ -278,85 +280,23 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
           }
           
         }
+        val template = new Mustache(rnJavaTemplate)
+        val formatedOutput = template.render(Map(
+            "className"-> javaClass,
+            "props"-> List( 
+               Map(
+                "valueNickName" -> "rotatioin",
+                "valueName" -> "rotatioin",
+                "valueType" -> "float",
+                "isNumber" -> true,
+                "functionName" -> "setRotation"            
+               )
+            )
+          ))
+        // val formatedOutput = formatedClassNameOutput richFormat Map("react_prop_fun" -> stringWriter.toString())
+        w.wl(formatedOutput)
 
-        // extends Map Feature
-        // need add to Map, remove from and createView
-        skipFirst { w.wl }
-        w.w(s"public static class ${viewClassName} extends MapFeature<${viewName}, ${viewOptionsName}>").braced {
-          w.wl(s"public ${viewClassName}(Context context, ${javaName} manager) {")
-          w.wl("  super(context, manager);")
-          w.wl("}")
-
-          skipFirst { w.wl }
-          w.wl(s"@Override")
-          w.wl(s"public void addToMap(SMap map) {")
-          w.wl(s"    overlay = map.add${viewName}(options);")
-          w.wl(s"}")
-
-          skipFirst { w.wl }
-          w.wl(s"@Override")
-          w.wl(s"public void removeFromMap(SMap map) {")
-          w.wl(s"    // TODO: support remove")
-          w.wl(s"}")
-
-          skipFirst { w.wl }
-          w.wl(s"@Override")
-          w.wl(s"protected ${viewOptionsName} createView() {")
-          w.wl(s"  return new ${viewOptionsName}();")
-          w.wl(s"}")
-
-        }
-
-        // val statics = i.methods.filter(m => m.static && m.lang.java)
-
-        // if (statics.nonEmpty) {
-        //   writeModuleInitializer(w)
-        // }
-        // for (m <- statics) {
-        //   skipFirst {
-        //     w.wl
-        //   }
-        //   writeMethodDoc(w, m, idJava.local)
-        //   val ret = marshal.returnType(m.ret)
-        //   val params = m.params.map(p => {
-        //     val nullityAnnotation = marshal.nullityAnnotation(p.ty).map(_ + " ").getOrElse("")
-        //     nullityAnnotation + marshal.paramType(p.ty) + " " + idJava.local(p.ident)
-        //   })
-        //   marshal.nullityAnnotation(m.ret).foreach(w.wl)
-        //   w.wl("public static native " + ret + " " + idJava.method(m.ident) + params.mkString("(", ", ", ")") + ";")
-        // }
-
-        // if (i.ext.cpp) {
-        //   w.wl
-        //   javaAnnotationHeader.foreach(w.wl)
-        //   w.wl(s"public static final class CppProxy$typeParamList extends $javaClass$typeParamList").braced {
-        //     writeModuleInitializer(w)
-        //     w.wl("private final long nativeRef;")
-        //     w.wl("private final AtomicBoolean destroyed = new AtomicBoolean(false);")
-        //     w.wl
-        //     w.wl(s"private CppProxy(long nativeRef)").braced {
-        //       w.wl("if (nativeRef == 0) throw new RuntimeException(\"nativeRef is zero\");")
-        //       w.wl("this.nativeRef = nativeRef;")
-        //       w.wl("NativeObjectManager.register(this, nativeRef);")
-        //     }
-        //     w.wl("public static native void nativeDestroy(long nativeRef);")
-        //     for (m <- i.methods if !m.static) { // Static methods not in CppProxy
-        //       val ret = marshal.returnType(m.ret)
-        //       val returnStmt = m.ret.fold("")(_ => "return ")
-        //       val params = m.params.map(p => marshal.paramType(p.ty) + " " + idJava.local(p.ident)).mkString(", ")
-        //       val args = m.params.map(p => idJava.local(p.ident)).mkString(", ")
-        //       val meth = idJava.method(m.ident)
-        //       w.wl
-        //       w.wl(s"@Override")
-        //       w.wl(s"public $ret $meth($params)$throwException").braced {
-        //         w.wl("assert !this.destroyed.get() : \"trying to use a destroyed object\";")
-        //         w.wl(s"${returnStmt}native_$meth(this.nativeRef${preComma(args)});")
-        //       }
-        //       w.wl(s"private native $ret native_$meth(long _nativeRef${preComma(params)});")
-        //     }
-        //   }
-        // }
-      }
+      // }
     })
   }
 
