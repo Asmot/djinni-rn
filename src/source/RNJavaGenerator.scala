@@ -208,95 +208,70 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
     val viewOptionsName = javaClass + "Options"
     val viewClassName = PRE_STR + javaClass
     
+    val template = new Mustache(rnJavaTemplate)
+    var jsonDataMap = scala.collection.mutable.Map(
+        "className"-> javaClass,
+        "props"-> List()
+        )
+    var jsonDataProps = List[scala.collection.mutable.Map[String, Any]]();
+    
+    writeJavaFile(javaName, origin, refs.java, w => {        
+      
+      val throwException = spec.javaCppException.fold("")(" throws " + _)
+      // no return will set to prop
+      for (m <- i.methods if !m.static) {
+        // only generate with annotation
+        // if have annotation generate a ReactProp name is the annotation value
+        // and change the overlay value call the same function name
+        m.annotation.getOrElse(None) match {
+          case Annotation(ident, value) => {    
 
-    // val formatedClassNameOutput = rnJavaTemplate richFormat Map("className" -> javaClass)
+            val jsonDataProp = scala.collection.mutable.Map[String, Any]();
 
-    writeJavaFile(javaName, origin, refs.java, w => {  
+            val docWriter = new StringWriter();
+            val innerW = new IndentWriter(docWriter);
+            writeMethodDoc(innerW, m, idJava.local)
+            jsonDataProp.put("funDoc" , docWriter.toString());
 
-      val stringWriter = new StringWriter();
-      val innerW = new IndentWriter(stringWriter);
+            val ret = marshal.returnType(m.ret)
+            val params = m.params.map(p => {
+              val nullityAnnotation = marshal.nullityAnnotation(p.ty).map(_ + " ").getOrElse("")
+              nullityAnnotation + marshal.paramType(p.ty) + " " + idJava.local(p.ident)
+            })
+            marshal.nullityAnnotation(m.ret).foreach(w.wl)
 
-      // writeDoc(w, doc)
+            if (m.params.length == 1) {
 
-      // javaAnnotationHeader.foreach(w.wl)
-      // w.w(s"${javaClassAccessModifierString} class ${javaName} extends ViewGroupManager<${javaName}.${javaNameView}>").braced {
-       
-        val skipFirst = SkipFirst()
-        generateJavaConstants(innerW, i.consts)
+              val parm_field = m.params(0);
+              // remmove ""
+              jsonDataProp("valueNickName") = value.replaceAll(""""""","")
+              jsonDataProp("valueName") = parm_field.ident.name
+              jsonDataProp("valueType") = marshal.paramType(parm_field.ty)
+              jsonDataProp("functionName") = m.ident.name
 
-        val throwException = spec.javaCppException.fold("")(" throws " + _)
-
-        // no return will set to prop
-        for (m <- i.methods if !m.static) {
-          // only generate with annotation
-          // if have annotation generate a ReactProp name is the annotation value
-          // and change the overlay value call the same function name
-          m.annotation.getOrElse(None) match {
-            case Annotation(ident, value) => {
-              
-              skipFirst { innerW.wl }
-              writeMethodDoc(innerW, m, idJava.local)
-              val ret = marshal.returnType(m.ret)
-              val params = m.params.map(p => {
-                val nullityAnnotation = marshal.nullityAnnotation(p.ty).map(_ + " ").getOrElse("")
-                nullityAnnotation + marshal.paramType(p.ty) + " " + idJava.local(p.ident)
-              })
-              marshal.nullityAnnotation(m.ret).foreach(w.wl)
-
-              if (m.params.length == 1) {
-                val parm_field = m.params(0);
-
-                innerW.wl(s"""@ReactProp(name = ${value})""")
-                // react not support setPosition and setVisbile so use value to the function name
-                val methodNameTemp = s"set_${value}"
-                val methodName = methodNameTemp.replaceAll(""""""","")
-                innerW.w(s"public void " + methodName + s"(${javaNameView} view, ReadableMap data)").braced {
-                  // get value
-                  parm_field.ty.resolved.base match {
-                    case t: MPrimitive => t.jName match {
-                      case "byte" | "short" | "int" | "float" | "double" | "long"   
-                          => innerW.wl(s"""${t.jName} v = (${t.jName})data.getDouble("${parm_field.ident.name}");""")
-                      case "boolean"
-                          => innerW.wl(s"""${t.jName} v = data.getBoolean("${parm_field.ident.name}");""")
-                    }
-                    case df: MDef => df.defType match {
-                      
-                      case DRecord => innerW.wl(s"${marshal.paramType(parm_field.ty)} v = ${PRE_STR}${marshal.paramType(parm_field.ty)}.fromReadableMap(data);")
-                    }
-                    case _ => innerW.wl(s"// not support! ${parm_field.ident.name}")
+              parm_field.ty.resolved.base match {
+                case t: MPrimitive => t.jName match {
+                  case "byte" | "short" | "int" | "float" | "double" | "long" => {
+                    jsonDataProp("isNumber") = true
                   }
-                  // set value to native
-                  innerW.wl("if (view.getMapOverlay() != null) {")
-                  innerW.wl(s"    view.getMapOverlay().${m.ident.name}(v);")
-                  innerW.wl("} else {")
-                  innerW.wl(s"    view.getMapOverlayOptions().${parm_field.ident.name} = v;")
-                  innerW.wl("}")
+                  case "boolean" => jsonDataProp("isBool") = true
                 }
-
+                case df: MDef => df.defType match {
+                  case DRecord => jsonDataProp("isObject") = true
+                }
               }
-              
+              jsonDataProps = jsonDataProps :+ jsonDataProp;
+              System.out.println(jsonDataProp)
             }
-            case None => {};
           }
-          
+          case None => {};
         }
-        val template = new Mustache(rnJavaTemplate)
-        val formatedOutput = template.render(Map(
-            "className"-> javaClass,
-            "props"-> List( 
-               Map(
-                "valueNickName" -> "rotatioin",
-                "valueName" -> "rotatioin",
-                "valueType" -> "float",
-                "isNumber" -> true,
-                "functionName" -> "setRotation"            
-               )
-            )
-          ))
-        // val formatedOutput = formatedClassNameOutput richFormat Map("react_prop_fun" -> stringWriter.toString())
-        w.wl(formatedOutput)
-
-      // }
+        
+      }
+      jsonDataMap("props") = jsonDataProps;
+      val formatedOutput = template.render(jsonDataMap)
+      w.wl(formatedOutput)
+      
     })
   }
 
