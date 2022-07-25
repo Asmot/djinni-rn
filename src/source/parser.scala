@@ -209,12 +209,12 @@ private object IdlParser extends RegexParsers {
   def value = floatValue | intValue | boolValue | stringValue | enumValue | constRef | compositeValue
 
   def const: Parser[Const] = doc ~ "const" ~ ident ~ ":" ~ typeRef ~ "=" ~ value ^^ {
-    case doc~_~ident~_~typeRef~_~value => Const(ident, typeRef, value, doc)
+    case doc~_~ident~_~typeRef~_~value =>  Const(ident, typeRef, value, doc)
   }
 
   // @ReactProp:"coordnate"
-  def annotation: Parser[Annotation] = "@" ~ ident ~ ":" ~ stringValue^^ {
-    case ident~_~stringValue => { 
+  def annotation: Parser[Annotation] = doc ~ "@" ~ ident ~ ":" ~ stringValue^^ {
+    case doc~_~ident~_~stringValue => { 
       // System.out.println(ident)
       // System.out.println("value " + stringValue)
       Annotation(ident, stringValue)

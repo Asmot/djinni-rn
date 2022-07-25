@@ -65,7 +65,7 @@ sealed abstract class TypeDef
 
 // eg @ReactProp(coordnate)
 // name is ReactProp value is coordnate
-case class Annotation(name: Any, value: String)
+case class Annotation(name: Ident, value: String)
 
 
 case class Const(ident: Ident, ty: TypeRef, value: Any, doc: Doc)
