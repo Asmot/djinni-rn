@@ -158,10 +158,10 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
     i.consts.map(c => {
       refs.find(c.ty)
     })
-    if (i.ext.cpp) {
-      refs.java.add("java.util.concurrent.atomic.AtomicBoolean")
-      refs.java.add("com.snapchat.djinni.NativeObjectManager")
-    }
+    // if (i.ext.cpp) {
+    //   refs.java.add("java.util.concurrent.atomic.AtomicBoolean")
+    //   refs.java.add("com.snapchat.djinni.NativeObjectManager")
+    // }
 
      // rn java
     refs.java.add("com.facebook.react.bridge.ReactApplicationContext");
@@ -169,6 +169,7 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
     refs.java.add("com.facebook.react.uimanager.ViewGroupManager");
     refs.java.add("com.facebook.react.uimanager.annotations.ReactProp");
     refs.java.add("com.facebook.react.uimanager.ThemedReactContext");
+    refs.java.add("android.content.Context");
     
     // for smap TODO add to spec
     refs.java.add("com.smap.maps.model.*");
@@ -190,24 +191,33 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
     var javaName = s"${PRE_STR}$javaClass${typeParamList}Manager"
     var javaNameView = s"${PRE_STR}$javaClass"
 
+    // inner View
+    val viewName = javaClass
+    val viewOptionsName = javaClass + "Options"
+    val viewClassName = PRE_STR + javaClass
+    
+
     writeJavaFile(javaName, origin, refs.java, w => {
       
       writeDoc(w, doc)
 
       javaAnnotationHeader.foreach(w.wl)
-      w.w(s"${javaClassAccessModifierString} class ${javaName} extends ViewGroupManager<${javaNameView}>").braced {
+      w.w(s"${javaClassAccessModifierString} class ${javaName} extends ViewGroupManager<${javaName}.${javaNameView}>").braced {
         // pre text
         w.wl("ReactApplicationContext mCallerContext;")
-        w.wl("""public static final String REACT_CLASS = "SRNMarkerManager";""")
+        w.wl(s"""public static final String REACT_CLASS = "${viewClassName}Manager";""")
         w.wl("")
-        w.wl("public SRNMarkerManager(ReactApplicationContext reactContext) {")
+        w.wl(s"public ${viewClassName}Manager(ReactApplicationContext reactContext) {")
         w.wl("    this.mCallerContext = reactContext;")
         w.wl("}")
         w.wl("@Override")
         w.wl("public String getName() {")
         w.wl("    return REACT_CLASS;")
         w.wl("}")
-
+        w.wl("@Override")
+        w.wl(s"protected ${viewClassName} createViewInstance(ThemedReactContext reactContext) {")
+        w.wl(s"  return new ${viewClassName}(reactContext, this);")
+        w.wl("}") 
 
         val skipFirst = SkipFirst()
         generateJavaConstants(w, i.consts)
@@ -217,6 +227,8 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
         // no return will set to prop
         for (m <- i.methods if !m.static) {
           // only generate with annotation
+          // if have annotation generate a ReactProp name is the annotation value
+          // and change the overlay value call the same function name
           m.annotation.getOrElse(None) match {
             case Annotation(ident, value) => {
               
@@ -233,18 +245,21 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
                 val parm_field = m.params(0);
 
                 w.wl(s"""@ReactProp(name = ${value})""")
-                w.w(s"public void " + idJava.method(m.ident) + s"(${javaNameView} view, ReadableMap data)").braced {
+                // react not support setPosition and setVisbile so use value to the function name
+                val methodNameTemp = s"set_${value}"
+                val methodName = methodNameTemp.replaceAll(""""""","")
+                w.w(s"public void " + methodName + s"(${javaNameView} view, ReadableMap data)").braced {
                   // get value
                   parm_field.ty.resolved.base match {
                     case t: MPrimitive => t.jName match {
                       case "byte" | "short" | "int" | "float" | "double" | "long"   
-                          => w.wl(s"${t.jName} v = (${t.jName})data.getDouble(${parm_field.ident.name});")
+                          => w.wl(s"""${t.jName} v = (${t.jName})data.getDouble("${parm_field.ident.name}");""")
                       case "boolean"
-                          => w.wl(s"${t.jName} v = data.getBoolean(${parm_field.ident.name});")
+                          => w.wl(s"""${t.jName} v = data.getBoolean("${parm_field.ident.name}");""")
                     }
                     case df: MDef => df.defType match {
                       
-                      case DRecord => w.wl(s"${marshal.paramType(parm_field.ty)} v = ${PRE_STR}${parm_field.ident.name}.fromReadableMap(data);")
+                      case DRecord => w.wl(s"${marshal.paramType(parm_field.ty)} v = ${PRE_STR}${marshal.paramType(parm_field.ty)}.fromReadableMap(data);")
                     }
                     case _ => w.wl(s"// not support! ${parm_field.ident.name}")
                   }
@@ -258,11 +273,38 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
 
               }
               
-              
             }
             case None => {};
           }
           
+        }
+
+        // extends Map Feature
+        // need add to Map, remove from and createView
+        skipFirst { w.wl }
+        w.w(s"public static class ${viewClassName} extends MapFeature<${viewName}, ${viewOptionsName}>").braced {
+          w.wl(s"public ${viewClassName}(Context context, ${javaName} manager) {")
+          w.wl("  super(context, manager);")
+          w.wl("}")
+
+          skipFirst { w.wl }
+          w.wl(s"@Override")
+          w.wl(s"public void addToMap(SMap map) {")
+          w.wl(s"    overlay = map.add${viewName}(options);")
+          w.wl(s"}")
+
+          skipFirst { w.wl }
+          w.wl(s"@Override")
+          w.wl(s"public void removeFromMap(SMap map) {")
+          w.wl(s"    // TODO: support remove")
+          w.wl(s"}")
+
+          skipFirst { w.wl }
+          w.wl(s"@Override")
+          w.wl(s"protected ${viewOptionsName} createView() {")
+          w.wl(s"  return new ${viewOptionsName}();")
+          w.wl(s"}")
+
         }
 
         // val statics = i.methods.filter(m => m.static && m.lang.java)
