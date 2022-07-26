@@ -45,8 +45,6 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
   // child clsss support the template
   var rnJavaTemplate = "";
 
-  var PRE_STR = "SRN"
-
   class JavaRefs() {
     var java = mutable.TreeSet[String]()
 
@@ -130,19 +128,25 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
     // enum no need to generate again can use the java directily
   }
 
+  def getFileName(ident: Ident, typeParams: Seq[TypeParam], i: Interface) : String;
+
+  def getInterfaceRef(i: Interface) : JavaRefs = {
+     val refs = new JavaRefs()
+      i.methods.map(m => {
+        m.params.map(p => refs.find(p.ty))
+        m.ret.foreach(refs.find)
+      })
+      i.consts.map(c => {
+        refs.find(c.ty)
+      })
+      return refs;
+  }
   
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface) {
     // only deal the interface which have annotation
   }
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface, annotation: Option[Annotation]) {
-    val refs = new JavaRefs()
-    i.methods.map(m => {
-      m.params.map(p => refs.find(p.ty))
-      m.ret.foreach(refs.find)
-    })
-    i.consts.map(c => {
-      refs.find(c.ty)
-    })
+    val refs = getInterfaceRef(i);
 
     def writeModuleInitializer(w: IndentWriter) = {
       if (spec.jniUseOnLoad) {
@@ -157,9 +161,8 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
       }
     }
     val javaClass = marshal.typename(ident, i)
-    val typeParamList = javaTypeParams(typeParams)
-    var javaFileName = s"${PRE_STR}$javaClass${typeParamList}Manager"
-
+    var javaFileName = getFileName(ident, typeParams, i); 
+    
     val template = new Mustache(rnJavaTemplate)
     var jsonDataMap = scala.collection.mutable.Map(
       "className" -> javaClass,
@@ -267,7 +270,7 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
       
     })
   }
-  
+
   def javaTypeParams(params: Seq[TypeParam]): String =
     if (params.isEmpty) "" else params.map(p => idJava.typeParam(p.ident)).mkString("<", ", ", ">")
 

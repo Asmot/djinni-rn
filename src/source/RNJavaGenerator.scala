@@ -36,7 +36,13 @@ if is record, only generate toReadableMap and fromReadableMap
 */
 class RNJavaGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
   this.rnJavaTemplate = utils.readFileCon(spec.rn_javaTemplateFile.get)
+  var PRE_STR = "SRN"
 
+  override def getFileName(ident: Ident, typeParams: Seq[TypeParam], i: Interface) : String = {
+    val javaClass = marshal.typename(ident, i)
+    val typeParamList = javaTypeParams(typeParams)
+    return s"${PRE_STR}$javaClass${typeParamList}Manager"
+  }
 
   override def writeFinalFile(ident: String, origin: String, refs: Iterable[String], f: IndentWriter => Unit) {
     createFile(spec.rn_javaOutFolder.get, idJava.ty(ident) + ".java", (w: IndentWriter) => {
@@ -52,7 +58,9 @@ class RNJavaGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
     })
   }
 
-  override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record) {
+  override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record) {}
+  override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record, annotation: Option[Annotation]) {
+  
     val refs = new JavaRefs()
     r.fields.foreach(f => refs.find(f.ty))
 
