@@ -28,7 +28,8 @@ ts_out="$base_dir/generated-src/ts"
 
 java_package="com.dropbox.textsort"
 rn_java_package="com.smap.android.react.maps"
-rn_java_template_file="$base_dir/output_template/rn_java/ViewManagerTemplate.java"
+rn_java_template_file="/Users/xiangyu.zheng/WorkSpace/cpp/smap/s-map-native/tools/djinni/output_template/rn_java/ViewManagerTemplate.mustache"
+rn_ts_template_file="/Users/xiangyu.zheng/WorkSpace/cpp/smap/s-map-native/tools/djinni/output_template/rn_ts/NativeViewTemplate.mustache"
 
 gen_stamp="$temp_out/gen.stamp"
 
@@ -65,6 +66,9 @@ fi
     --rn-java-out "$temp_out/rn_java" \
     --rn-java-package $rn_java_package \
     --rn-java-template-file "$rn_java_template_file" \
+    \
+    --rn-ts-out "$temp_out/rn_ts" \
+    --rn-ts-template-file "$rn_ts_template_file" \
     \
     --cpp-out "$temp_out/cpp" \
     --cpp-namespace textsort \

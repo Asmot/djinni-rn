@@ -47,6 +47,9 @@ object Main {
     var rn_javaPackage: Option[String] = None
     var rn_javaTemplateFile: Option[File] = None
 
+    var rn_tsOutFolder: Option[File] = None
+    var rn_tsTemplateFile: Option[File] = None
+
     var javaClassAccessModifier: JavaAccessModifier.Value = JavaAccessModifier.Public
     var javaCppException: Option[String] = None
     var javaAnnotation: Option[String] = None
@@ -136,9 +139,13 @@ object Main {
         .text("The output for the rn Java files (Generator disabled if unspecified).")
       opt[String]("rn-java-package").valueName("...").foreach(x => rn_javaPackage = Some(x))
         .text("The package name to use for generated rn Java classes.")
-
       opt[File]("rn-java-template-file").valueName("<in-file>").foreach(x => rn_javaTemplateFile = Some(x))
         .text("The template file, which will be used when generate react native android bridge files")
+
+      opt[File]("rn-ts-out").valueName("<out-folder>").foreach(x => rn_tsOutFolder = Some(x))
+        .text("The output for the rn ts files (Generator disabled if unspecified).")
+      opt[File]("rn-ts-template-file").valueName("<in-file>").foreach(x => rn_tsTemplateFile = Some(x))
+        .text("The template file, which will be used when generate react native ts bridge files")
       
        
       opt[JavaAccessModifier.Value]("java-class-access-modifier").valueName("<public/package>").foreach(x => javaClassAccessModifier = x)
@@ -381,6 +388,10 @@ object Main {
       rn_javaOutFolder,
       rn_javaPackage,
       rn_javaTemplateFile,
+
+      rn_tsOutFolder,
+      rn_tsTemplateFile,
+
       javaOutFolder,
       javaPackage,
       javaClassAccessModifier,

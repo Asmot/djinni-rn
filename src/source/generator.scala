@@ -36,6 +36,9 @@ package object generatorTools {
                    rn_javaPackage: Option[String] = None,
                    rn_javaTemplateFile: Option[File] = None,
 
+                   rn_tsOutFolder: Option[File] = None,
+                   rn_tsTemplateFile: Option[File] = None,
+
 
                    javaOutFolder: Option[File],
                    javaPackage: Option[String],
@@ -271,6 +274,12 @@ package object generatorTools {
         }
         new RNJavaGenerator(spec).generate(idl)
       }
+      if (spec.rn_tsOutFolder.isDefined) {
+        if (!spec.skipGeneration) {
+          createFolder("Java", spec.rn_tsOutFolder.get)
+        }
+        new RNTsGenerator(spec).generate(idl)
+      }
       if (spec.jniOutFolder.isDefined) {
         if (!spec.skipGeneration) {
           createFolder("JNI C++", spec.jniOutFolder.get)
@@ -433,7 +442,12 @@ abstract class Generator(spec: Spec)
       case e: Enum =>
         assert(td.params.isEmpty)
         generateEnum(td.origin, td.ident, td.doc, e)
-      case r: Record => generateRecord(td.origin, td.ident, td.doc, td.params, r)
+      case r: Record => {
+        td.annotation.getOrElse(None) match {
+          case Annotation(ident, value) => generateRecord(td.origin, td.ident, td.doc, td.params, r, td.annotation);
+          case None => generateRecord(td.origin, td.ident, td.doc, td.params, r)
+        }
+      }
       case i: Interface => {
         td.annotation.getOrElse(None) match {
           case Annotation(ident, value) => generateInterface(td.origin, td.ident, td.doc, td.params, i, td.annotation);
@@ -448,6 +462,7 @@ abstract class Generator(spec: Spec)
   def generateModule(decls: Seq[InternTypeDecl]) {}
   def generateEnum(origin: String, ident: Ident, doc: Doc, e: Enum)
   def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record)
+  def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record, annotation: Option[Annotation]) {}
   def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface)
   def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface, annotation: Option[Annotation]) {}
 
