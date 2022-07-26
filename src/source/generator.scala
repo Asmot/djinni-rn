@@ -434,7 +434,12 @@ abstract class Generator(spec: Spec)
         assert(td.params.isEmpty)
         generateEnum(td.origin, td.ident, td.doc, e)
       case r: Record => generateRecord(td.origin, td.ident, td.doc, td.params, r)
-      case i: Interface => generateInterface(td.origin, td.ident, td.doc, td.params, i)
+      case i: Interface => {
+        td.annotation.getOrElse(None) match {
+          case Annotation(ident, value) => generateInterface(td.origin, td.ident, td.doc, td.params, i, td.annotation);
+          case None => generateInterface(td.origin, td.ident, td.doc, td.params, i);
+        }
+      }
       case p: ProtobufMessage => // never need to generate files for protobuf types
     }
     generateModule(decls.filter(td => td.body.isInstanceOf[Interface]))
@@ -444,6 +449,7 @@ abstract class Generator(spec: Spec)
   def generateEnum(origin: String, ident: Ident, doc: Doc, e: Enum)
   def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record)
   def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface)
+  def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface, annotation: Option[Annotation]) {}
 
   // --------------------------------------------------------------------------
   // Render type expression

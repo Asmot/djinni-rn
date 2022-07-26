@@ -82,8 +82,8 @@ private object IdlParser extends RegexParsers {
   def externDirective = "extern".r
   def protobufDirective = "protobuf".r
 
-  def typeDecl(origin: String): Parser[TypeDecl] = doc ~ ident ~ typeList(ident ^^ TypeParam) ~ "=" ~ typeDef ^^ {
-    case doc~ident~typeParams~_~body => InternTypeDecl(ident, typeParams, body, doc, origin)
+  def typeDecl(origin: String): Parser[TypeDecl] = doc ~ opt(annotation) ~ ident ~ typeList(ident ^^ TypeParam) ~ "=" ~ typeDef ^^ {
+    case doc~annotation~ident~typeParams~_~body => InternTypeDecl(ident, typeParams, body, doc, origin, annotation)
   }
 
   def ext(default: Ext) = (rep1("+" ~> ident) >> checkExts) | success(default)
@@ -230,27 +230,6 @@ private object IdlParser extends RegexParsers {
   def ident: Parser[Ident] = pos(regex("""[A-Za-z_][A-Za-z_0-9]*""".r)) ^^ {
     case (s, p) => Ident(s, fileStack.top, p)
   }
-
-// ^^ (_.substring(1))) ^^ Doc
-  def anno_value: Parser[String] = regex("""\"[A-Za-z_][A-Za-z_0-9]*\"""".r) ^^ (_.substring(1))
-  
-  // def annotation(str: String): Annotation = {
-  //   val annotationName = regex("""@[A-Za-z_][A-Za-z_0-9]*""".r)
-  //   val annotationValue = regex("""\([A-Za-z_][A-Za-z_0-9]*\)""".r)
-  //   // if (annotationExist) {
-  //   //   // remove @
-  //   //   val name = annotationExist.substring(1)
-  //   //   if (annotationValue) {
-  //   //     val value = annotationExist.substring(1, annotationExist.length - 1);
-  //   //     Annotation(name, value);
-  //   //   } else {
-  //   //     Annotation(name, "")
-  //   //   }
-  //   // } else {
-  //   //   Annotation("","")
-  //   // }
-  //   Annotation("","")
-  // }
  
   def doc: Parser[Doc] = rep(regex("""#[^\n\r]*""".r) ^^ (_.substring(1))) ^^ Doc
 

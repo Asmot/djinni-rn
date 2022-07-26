@@ -141,24 +141,15 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
   }
 
   override def generateEnum(origin: String, ident: Ident, doc: Doc, e: Enum) {
-    val refs = new JavaRefs()
-
-    writeJavaFile(ident, origin, refs.java, w => {
-      writeDoc(w, doc)
-      javaAnnotationHeader.foreach(w.wl)
-      w.w(s"${javaClassAccessModifierString}enum ${marshal.typename(ident, e)}").braced {
-        for (o <- normalEnumOptions(e)) {
-          writeDoc(w, o.doc)
-          w.wl(idJava.enum(o.ident) + ",")
-        }
-        w.wl(";")
-      }
-    })
+    // enum no need to generate again can use the java directily
   }
 
+  
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface) {
+    // only deal the interface which have annotation
+  }
+  override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface, annotation: Option[Annotation]) {
     val refs = new JavaRefs()
-
     i.methods.map(m => {
       m.params.map(p => refs.find(p.ty))
       m.ret.foreach(refs.find)
@@ -181,14 +172,8 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
     }
     val javaClass = marshal.typename(ident, i)
     val typeParamList = javaTypeParams(typeParams)
-    var javaName = s"${PRE_STR}$javaClass${typeParamList}Manager"
-    var javaNameView = s"${PRE_STR}$javaClass"
+    var javaFileName = s"${PRE_STR}$javaClass${typeParamList}Manager"
 
-    // inner View
-    val viewName = javaClass
-    val viewOptionsName = javaClass + "Options"
-    val viewClassName = PRE_STR + javaClass
-    
     val template = new Mustache(rnJavaTemplate)
     var jsonDataMap = scala.collection.mutable.Map(
         "className"-> javaClass,
@@ -196,7 +181,7 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
         )
     var jsonDataProps = List[scala.collection.mutable.Map[String, Any]]();
     
-    writeJavaFile(javaName, origin, refs.java, w => {        
+    writeJavaFile(javaFileName, origin, refs.java, w => {        
       
       val throwException = spec.javaCppException.fold("")(" throws " + _)
       // no return will set to prop
@@ -278,133 +263,6 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
       w.w(s"${javaClassAccessModifierString}${javaFinal}class ${self + javaTypeParams(params)}").braced {
         w.wl
         generateJavaConstants(w, r.consts)
-        // // Field definitions.
-        // for (f <- r.fields) {
-        //   w.wl
-        //   w.wl(s"/*package*/ final ${marshal.fieldType(f.ty)} ${idJava.field(f.ident)};")
-        // }
-
-        // // Constructor.
-        // w.wl
-        // w.wl(s"public $self(").nestedN(2) {
-        //   val skipFirst = SkipFirst()
-        //   for (f <- r.fields) {
-        //     skipFirst { w.wl(",") }
-        //     marshal.nullityAnnotation(f.ty).map(annotation => w.w(annotation + " "))
-        //     w.w(marshal.paramType(f.ty) + " " + idJava.local(f.ident))
-        //   }
-        //   w.wl(") {")
-        // }
-        // w.nested {
-        //   for (f <- r.fields) {
-        //     w.wl(s"this.${idJava.field(f.ident)} = ${idJava.local(f.ident)};")
-        //   }
-        // }
-        // w.wl("}")
-
-        // // Accessors
-        // for (f <- r.fields) {
-        //   w.wl
-        //   writeDoc(w, f.doc)
-        //   marshal.nullityAnnotation(f.ty).foreach(w.wl)
-        //   w.w("public " + marshal.returnType(Some(f.ty)) + " " + idJava.method("get_" + f.ident.name) + "()").braced {
-        //     w.wl("return " + idJava.field(f.ident) + ";")
-        //   }
-        // }
-
-        // if (r.derivingTypes.contains(DerivingType.Eq)) {
-        //   w.wl
-        //   w.wl("@Override")
-        //   val nullableAnnotation = javaNullableAnnotation.map(_ + " ").getOrElse("")
-        //   w.w(s"public boolean equals(${nullableAnnotation}Object obj)").braced {
-        //     w.w(s"if (!(obj instanceof $self))").braced {
-        //       w.wl("return false;")
-        //     }
-        //     w.wl(s"$self other = ($self) obj;")
-        //     w.w(s"return ").nestedN(2) {
-        //       val skipFirst = SkipFirst()
-        //       for (f <- r.fields) {
-        //         skipFirst { w.wl(" &&") }
-        //         f.ty.resolved.base match {
-        //           case MBinary | MArray => w.w(s"java.util.Arrays.equals(${idJava.field(f.ident)}, other.${idJava.field(f.ident)})")
-        //           case MList | MSet | MMap | MString | MDate => w.w(s"this.${idJava.field(f.ident)}.equals(other.${idJava.field(f.ident)})")
-        //           case MOptional =>
-        //             w.w(s"((this.${idJava.field(f.ident)} == null && other.${idJava.field(f.ident)} == null) || ")
-        //             w.w(s"(this.${idJava.field(f.ident)} != null && this.${idJava.field(f.ident)}.equals(other.${idJava.field(f.ident)})))")
-        //           case t: MPrimitive => w.w(s"this.${idJava.field(f.ident)} == other.${idJava.field(f.ident)}")
-        //           case df: MDef => df.defType match {
-        //             case DRecord => w.w(s"this.${idJava.field(f.ident)}.equals(other.${idJava.field(f.ident)})")
-        //             case DEnum => w.w(s"this.${idJava.field(f.ident)} == other.${idJava.field(f.ident)}")
-        //             case _ => throw new AssertionError("Unreachable")
-        //           }
-        //           case e: MExtern => e.defType match {
-        //             case DRecord => if(e.java.reference) {
-        //               w.w(s"this.${idJava.field(f.ident)}.equals(other.${idJava.field(f.ident)})")
-        //             } else {
-        //               w.w(s"this.${idJava.field(f.ident)} == other.${idJava.field(f.ident)}")
-        //             }
-        //             case DEnum => w.w(s"this.${idJava.field(f.ident)} == other.${idJava.field(f.ident)}")
-        //             case _ => throw new AssertionError("Unreachable")
-        //           }
-        //           case _ => throw new AssertionError("Unreachable")
-        //         }
-        //       }
-        //     }
-        //     w.wl(";")
-        //   }
-        //   // Also generate a hashCode function, since you shouldn't override one without the other.
-        //   // This hashcode implementation is based off of the apache commons-lang implementation of
-        //   // HashCodeBuilder (excluding support for Java arrays) which is in turn based off of the
-        //   // the recommendataions made in Effective Java.
-        //   w.wl
-        //   w.wl("@Override")
-        //   w.w("public int hashCode()").braced {
-        //     w.wl("// Pick an arbitrary non-zero starting value")
-        //     w.wl("int hashCode = 17;")
-        //     // Also pick an arbitrary prime to use as the multiplier.
-        //     val multiplier = "31"
-        //     for (f <- r.fields) {
-        //       val fieldHashCode = f.ty.resolved.base match {
-        //         case MBinary | MArray => s"java.util.Arrays.hashCode(${idJava.field(f.ident)})"
-        //         case MList | MSet | MMap | MString | MDate => s"${idJava.field(f.ident)}.hashCode()"
-        //         // Need to repeat this case for MDef
-        //         case df: MDef => s"${idJava.field(f.ident)}.hashCode()"
-        //         case MOptional => s"(${idJava.field(f.ident)} == null ? 0 : ${idJava.field(f.ident)}.hashCode())"
-        //         case t: MPrimitive => t.jName match {
-        //           case "byte" | "short" | "int" => idJava.field(f.ident)
-        //           case "long" => s"((int) (${idJava.field(f.ident)} ^ (${idJava.field(f.ident)} >>> 32)))"
-        //           case "float" => s"Float.floatToIntBits(${idJava.field(f.ident)})"
-        //           case "double" => s"((int) (Double.doubleToLongBits(${idJava.field(f.ident)}) ^ (Double.doubleToLongBits(${idJava.field(f.ident)}) >>> 32)))"
-        //           case "boolean" => s"(${idJava.field(f.ident)} ? 1 : 0)"
-        //           case _ => throw new AssertionError("Unreachable")
-        //         }
-        //         case e: MExtern => e.defType match {
-        //           case DRecord => "(" + e.java.hash.format(idJava.field(f.ident)) + ")"
-        //           case DEnum => s"${idJava.field(f.ident)}.hashCode()"
-        //           case _ => throw new AssertionError("Unreachable")
-        //         }
-        //         case _ => throw new AssertionError("Unreachable")
-        //       }
-        //       w.wl(s"hashCode = hashCode * $multiplier + $fieldHashCode;")
-        //     }
-        //     w.wl(s"return hashCode;")
-        //   }
-        // }
-
-        // w.wl
-        // w.wl("@Override")
-        // w.w("public String toString()").braced {
-        //   w.w(s"return ").nestedN(2) {
-        //     w.wl(s""""${self}{" +""")
-        //     for (i <- 0 to r.fields.length-1) {
-        //       val name = idJava.field(r.fields(i).ident)
-        //       val comma = if (i > 0) """"," + """ else ""
-        //       w.wl(s"""${comma}"${name}=" + ${name} +""")
-        //     }
-        //   }
-        //   w.wl(s""""}";""")
-        // }
-        // w.wl
 
         // toWritableMap
         w.wl
