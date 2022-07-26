@@ -176,13 +176,13 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
 
     val template = new Mustache(rnJavaTemplate)
     var jsonDataMap = scala.collection.mutable.Map(
-        "className"-> javaClass,
-        "props"-> List()
-        )
-    var jsonDataProps = List[scala.collection.mutable.Map[String, Any]]();
-    
+      "className" -> javaClass,
+      "functions" -> List[scala.collection.mutable.Map[String, Any]]()
+    )
+    var jsonDataFunctions = List[scala.collection.mutable.Map[String, Any]]()
     writeJavaFile(javaFileName, origin, refs.java, w => {        
       
+      var counter = 1;
       val throwException = spec.javaCppException.fold("")(" throws " + _)
       // no return will set to prop
       for (m <- i.methods if !m.static) {
@@ -197,45 +197,86 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
             val docWriter = new StringWriter();
             val innerW = new IndentWriter(docWriter);
             writeMethodDoc(innerW, m, idJava.local)
-            jsonDataProp.put("funDoc" , docWriter.toString());
+            // doce
+            jsonDataProp.put("functionDoc" , docWriter.toString());
+            // annotation
+            jsonDataProp(s"${ident.name}Annotation") = true;
+             // remmove ""
+            jsonDataProp("annotaionValue") = value.replaceAll(""""""","")
 
+            // function name and index (id)
+            jsonDataProp("functionName") = m.ident.name;
+            jsonDataProp("functionNameId") = counter;
+            counter = counter + 1;
+
+            // return
             val ret = marshal.returnType(m.ret)
+
+            val jsonDataReturn = scala.collection.mutable.Map[String, Any]();
+            m.ret.getOrElse(None) match {
+              case TypeRef(resolved) => {
+                  jsonDataProp("haveReturn") = true;
+                  jsonDataReturn("returnType") = ret;
+                  m.ret.get.resolved.base match {
+                    case t: MPrimitive => t.jName match {
+                      case "byte" | "short" | "int" | "float" | "double" | "long" => {
+                        jsonDataReturn("returnIsNumber") = true
+                      }
+                      case "boolean" => jsonDataReturn("returnIsBool") = true
+                    }
+                    case df: MDef => df.defType match {
+                      case DRecord => jsonDataReturn("returnIsObject") = true
+                    }
+                  }
+                }
+              case None => jsonDataProp("haveReturn") = false;
+            }
+            
             val params = m.params.map(p => {
               val nullityAnnotation = marshal.nullityAnnotation(p.ty).map(_ + " ").getOrElse("")
               nullityAnnotation + marshal.paramType(p.ty) + " " + idJava.local(p.ident)
             })
             marshal.nullityAnnotation(m.ret).foreach(w.wl)
+            jsonDataProp("return") = jsonDataReturn;
 
-            if (m.params.length == 1) {
+            // params
+            jsonDataProp("haveParams") = (m.params.length > 0);
+            jsonDataProp("oneParam") = (m.params.length == 1);
+            jsonDataProp("params") = List[scala.collection.mutable.Map[String, Any]]();            
 
-              val parm_field = m.params(0);
-              // remmove ""
-              jsonDataProp("valueNickName") = value.replaceAll(""""""","")
-              jsonDataProp("valueName") = parm_field.ident.name
-              jsonDataProp("valueType") = marshal.paramType(parm_field.ty)
-              jsonDataProp("functionName") = m.ident.name
+            var jsonDataParams = List[scala.collection.mutable.Map[String, Any]]();            
+            for (parm <- m.params) {
+              val parm_field = parm;
 
+              var jsonDataParm = scala.collection.mutable.Map[String, Any]();
+              jsonDataParm("paramName") = parm_field.ident.name
+              jsonDataParm("paramType") = marshal.paramType(parm_field.ty)
+              
               parm_field.ty.resolved.base match {
                 case t: MPrimitive => t.jName match {
                   case "byte" | "short" | "int" | "float" | "double" | "long" => {
-                    jsonDataProp("isNumber") = true
+                    jsonDataParm("paramIsNumber") = true
                   }
-                  case "boolean" => jsonDataProp("isBool") = true
+                  case "boolean" => jsonDataParm("paramIsBool") = true
                 }
                 case df: MDef => df.defType match {
-                  case DRecord => jsonDataProp("isObject") = true
+                  case DRecord => jsonDataParm("paramIsObject") = true
                 }
               }
-              jsonDataProps = jsonDataProps :+ jsonDataProp;
-              // System.out.println(jsonDataProp)
+              jsonDataParams = jsonDataParams :+ jsonDataParm;
+              
             }
+            jsonDataProp("params") = jsonDataParams;
+            jsonDataFunctions = jsonDataFunctions :+ jsonDataProp;
+            
           }
           case None => {};
         }
         
       }
-      jsonDataMap("props") = jsonDataProps;
+      jsonDataMap("functions") = jsonDataFunctions;
       val formatedOutput = template.render(jsonDataMap)
+      // System.out.println(jsonDataMap)
       w.wl(formatedOutput)
       
     })

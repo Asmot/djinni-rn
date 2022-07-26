@@ -112,6 +112,82 @@ value only support String
 setPosition(position : LatLng);
 ```
 
+json data is
+
+``` json
+{
+  "className" : "xx",
+  "functions" : [
+    {
+      "XXannotaion":true,
+      "annotaionValue": "xx",
+      "functionDoc":"xx",
+      "functionName":"xx",
+      "functionNameId":0,
+      "haveParams": false,
+      "oneParam": false,
+      "params": [
+        {
+          "paramName" : "xx",
+          "paramType" : "xx",
+          "paramIsNumber":"bool",
+          "paramIsObject":"bool",
+          "paramIsBool":"bool"
+        }
+      ],
+      "haveReturn": false,
+      "return" : {
+         "returnType" : "xx",
+         "returnIsNumber":"bool",
+         "returnIsObject":"bool",
+         "returnIsBool":"bool"
+      }
+    },
+    {
+      ...
+    }
+    ...
+  ]
+}
+```
+
+
+
+### @ReactManager:"value_nouse"
+if some interface add the annotation ，will generate a  SRN{{className}}Manager for react-native android bridge
+
+### @ReactProp:"name"
+if some method in interface add the annotation ， will use mustache to render code with this data
+
+``` json
+
+{
+  "functions" : [
+    {
+      "ReactPropAnnation":true,
+      ...
+    },
+    ...
+  ]
+}
+```
+
+### @ReactCaller:"value_nouse"
+some native function need call by react, eg: maker.showInfoWindow()
+
+
+``` json
+{
+  "functions" : [
+    {
+      "ReactCallerAnnation":true,
+      ...
+    },
+    ...
+  ]
+}
+```
+
 
 
 # Djinni
@@ -128,7 +204,7 @@ This file only covers the parts that have been changed.  Please see the
 
 ## Building
 
-![Bazel Build](https://github.com/Snapchat/djinni/workflows/Build%20and%20Test/badge.svg)
+![Bazel Build]( https://github.com/Snapchat/djinni/workflows/Build%20and%20Test/badge.svg)
 
 Both the Djinni code generator and test suite are built with Bazel. You can use
 either plain Bazel or [Bazelisk](https://github.com/bazelbuild/bazelisk).

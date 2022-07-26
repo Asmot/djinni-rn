@@ -45,19 +45,6 @@ sealed abstract class TypeDecl {
   val params: Seq[TypeParam]
   val body: TypeDef
   val origin: String
-  // def this(ident: Ident, params: Seq[TypeParam], body: TypeDef, origin: String) = {
-  //   this.ident = ident;
-  //   this.params = params;
-  //   this.body = body;
-  //   this.origin = origin;
-  // }
-  // // each record interface can have an annotation
-  // // add a constructor do not change the older principle
-  // var annotation: Annotation
-  // def this(ident: Ident, params: Seq[TypeParam], body: TypeDef, origin: String, annotation: Annotation) = {
-  //  this(ident, params, body, origin)
-  //  this.annotation = annotation;
-  // }
 }
  // each InternTypeDecl can have an annotation 
 case class InternTypeDecl(override val ident: Ident, override val params: Seq[TypeParam], override val body: TypeDef, doc: Doc, override val origin: String, annotation: Option[Annotation]) extends TypeDecl
