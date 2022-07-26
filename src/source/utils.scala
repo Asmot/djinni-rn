@@ -44,6 +44,10 @@ package object utils {
 
     def readFileCon(path: String) : String = {
         val file = new File(path);
+        return readFileCon(file);
+    }
+
+    def readFileCon(file: File) : String = {
         val normalizedFile = normalizePath(file);
         val fin = new FileInputStream(normalizedFile)
         try {
@@ -52,6 +56,7 @@ package object utils {
             fin.close()
         }
     }
+
 
     // append str with \n
     def s_wl(str: String, info: String) : String = {

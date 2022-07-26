@@ -45,7 +45,7 @@ object Main {
 
     var rn_javaOutFolder: Option[File] = None
     var rn_javaPackage: Option[String] = None
-
+    var rn_javaTemplateFile: Option[File] = None
 
     var javaClassAccessModifier: JavaAccessModifier.Value = JavaAccessModifier.Public
     var javaCppException: Option[String] = None
@@ -133,9 +133,13 @@ object Main {
         .text("The package name to use for generated Java classes.")
 
       opt[File]("rn-java-out").valueName("<out-folder>").foreach(x => rn_javaOutFolder = Some(x))
-        .text("The output for the Java files (Generator disabled if unspecified).")
+        .text("The output for the rn Java files (Generator disabled if unspecified).")
       opt[String]("rn-java-package").valueName("...").foreach(x => rn_javaPackage = Some(x))
-        .text("The package name to use for generated Java classes.")
+        .text("The package name to use for generated rn Java classes.")
+
+      opt[File]("rn-java-template-file").valueName("<in-file>").foreach(x => rn_javaTemplateFile = Some(x))
+        .text("The template file, which will be used when generate react native android bridge files")
+      
        
       opt[JavaAccessModifier.Value]("java-class-access-modifier").valueName("<public/package>").foreach(x => javaClassAccessModifier = x)
         .text("The access modifier to use for generated Java classes (default: public).")
@@ -376,6 +380,7 @@ object Main {
     val outSpec = Spec(
       rn_javaOutFolder,
       rn_javaPackage,
+      rn_javaTemplateFile,
       javaOutFolder,
       javaPackage,
       javaClassAccessModifier,

@@ -34,6 +34,7 @@ package object generatorTools {
 
                    rn_javaOutFolder: Option[File] = None,
                    rn_javaPackage: Option[String] = None,
+                   rn_javaTemplateFile: Option[File] = None,
 
 
                    javaOutFolder: Option[File],

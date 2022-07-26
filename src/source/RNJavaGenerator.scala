@@ -43,6 +43,10 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
   val javaClassAccessModifierString = JavaAccessModifier.getCodeGenerationString(spec.javaClassAccessModifier)
   val marshal = new JavaMarshal(spec)
 
+  // read the rn java template file
+  val rnJavaTemplate = utils.readFileCon(spec.rn_javaTemplateFile.get);
+
+
   var PRE_STR = "SRN"
 
   class JavaRefs() {
@@ -162,29 +166,6 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
     i.consts.map(c => {
       refs.find(c.ty)
     })
-    // if (i.ext.cpp) {
-    //   refs.java.add("java.util.concurrent.atomic.AtomicBoolean")
-    //   refs.java.add("com.snapchat.djinni.NativeObjectManager")
-    // }
-
-    val rnJavaTemplate = utils.readFileCon("/Users/xiangyu.zheng/WorkSpace/cpp/djinni-rn/examples/ouput_template/rn_java/ViewManagerTemplate.java");
-    
-    implicit def RichFormatter(string: String) = new {
-      def richFormat(replacement: Map[String, Any]) =
-        (string /: replacement) {(res, entry) => res.replaceAll("#\\{%s\\}".format(entry._1), entry._2.toString)}
-    }
-    
-
-    //  // rn java
-    // refs.java.add("com.facebook.react.bridge.ReactApplicationContext");
-    // refs.java.add("com.facebook.react.bridge.ReadableMap");
-    // refs.java.add("com.facebook.react.uimanager.ViewGroupManager");
-    // refs.java.add("com.facebook.react.uimanager.annotations.ReactProp");
-    // refs.java.add("com.facebook.react.uimanager.ThemedReactContext");
-    // refs.java.add("android.content.Context");
-    
-    // // for smap TODO add to spec
-    // refs.java.add("com.smap.maps.model.*");
 
     def writeModuleInitializer(w: IndentWriter) = {
       if (spec.jniUseOnLoad) {
@@ -261,7 +242,7 @@ class RNJavaGenerator(spec: Spec) extends Generator(spec) {
                 }
               }
               jsonDataProps = jsonDataProps :+ jsonDataProp;
-              System.out.println(jsonDataProp)
+              // System.out.println(jsonDataProp)
             }
           }
           case None => {};

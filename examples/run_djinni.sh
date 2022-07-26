@@ -17,7 +17,7 @@ base_dir=$(cd "`dirname "$loc"`" && pwd)
 
 temp_out="$base_dir/djinni-output-temp"
 
-in="$base_dir/example.djinni"
+in="$base_dir/outter.djinni"
 
 cpp_out="$base_dir/generated-src/cpp"
 jni_out="$base_dir/generated-src/jni"
@@ -28,6 +28,7 @@ ts_out="$base_dir/generated-src/ts"
 
 java_package="com.dropbox.textsort"
 rn_java_package="com.smap.android.react.maps"
+rn_java_template_file="$base_dir/output_template/rn_java/ViewManagerTemplate.java"
 
 gen_stamp="$temp_out/gen.stamp"
 
@@ -63,6 +64,7 @@ fi
     \
     --rn-java-out "$temp_out/rn_java" \
     --rn-java-package $rn_java_package \
+    --rn-java-template-file "$rn_java_template_file" \
     \
     --cpp-out "$temp_out/cpp" \
     --cpp-namespace textsort \
