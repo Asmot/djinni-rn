@@ -259,6 +259,8 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
             jsonDataProp("params") = List[scala.collection.mutable.Map[String, Any]]();            
 
             var jsonDataParams = List[scala.collection.mutable.Map[String, Any]]();            
+            var parmCounter = 0;
+            var parmSize = m.params.length
             for (parm <- m.params) {
               val parm_field = parm;
 
@@ -277,8 +279,15 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
                   case DRecord => jsonDataParm("paramIsObject") = true
                 }
               }
+              // record the param is first or last
+              if (parmCounter == 0) {
+                jsonDataParm("firstParam") = true;
+              }
+              if (parmCounter == parmSize - 1) {
+                jsonDataParm("lastParam") = true;
+              }
+              parmCounter = parmCounter + 1;
               jsonDataParams = jsonDataParams :+ jsonDataParm;
-              
             }
             jsonDataProp("params") = jsonDataParams;
             jsonDataFunctions = jsonDataFunctions :+ jsonDataProp;

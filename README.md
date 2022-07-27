@@ -53,7 +53,9 @@ json data is
           "paramType" : "xx",
           "paramIsNumber":"bool",
           "paramIsObject":"bool",
-          "paramIsBool":"bool"
+          "paramIsBool":"bool",
+          "firstParam":"false", // mean the frst one
+          "lastParam":"false" // mean the last one
         }
       ],
       "haveReturn": false,
