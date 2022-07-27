@@ -51,7 +51,6 @@ class RNTsGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
   override def getInterfaceRef(i: Interface) : JavaRefs = {
     val refs = new JavaRefs()
     i.methods.map(m => {
-
       m.annotation.getOrElse(None) match {
          case Annotation(ident, value) => {    
             m.params.map(p => {
@@ -67,11 +66,23 @@ class RNTsGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
               case _ => {}//throw new AssertionError("Unreachable")
             }
           })
+          // if return is record add to ref
+          m.ret.getOrElse(None) match {
+            case None => {}
+            case _ => {
+              m.ret.get.resolved.base match {
+                case df: MDef => df.defType match {
+                  case DRecord => refs.java.add(s"${marshal.fieldType(m.ret.get)}");
+                  case DEnum => refs.java.add(s"${marshal.fieldType(m.ret.get)}");
+                  case _ => {}//throw new AssertionError("Unreachable")
+                }
+                case _ => {}//throw new AssertionError("Unreachable")
+              }
+            }
+          }
          }
          case None => {}
       }
-
-      
     })
     return refs;
     
