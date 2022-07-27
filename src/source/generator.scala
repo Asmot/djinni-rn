@@ -462,9 +462,15 @@ abstract class Generator(spec: Spec)
   def generateModule(decls: Seq[InternTypeDecl]) {}
   def generateEnum(origin: String, ident: Ident, doc: Doc, e: Enum)
   def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record)
-  def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record, annotation: Option[Annotation]) {}
+  def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record, annotation: Option[Annotation]) {
+    // default do not care about annotation
+    generateRecord(origin, ident, doc, params, r);
+  }
   def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface)
-  def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface, annotation: Option[Annotation]) {}
+  def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface, annotation: Option[Annotation]) {
+    // default do not care about annotation
+    generateInterface(origin, ident, doc, typeParams, i);
+  }
 
   // --------------------------------------------------------------------------
   // Render type expression

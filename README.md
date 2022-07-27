@@ -18,85 +18,6 @@ output will like this
     }
   ```
 
-## generate react native bridge class for android
-  only can be used in the scene
-
-### WritableMap and ReadableMap
-  generate toWritableMap and fromReadableMap with record 
-  ```
-    MarkerOptions = record {
-
-      # the location for the marker.
-      # @since 1.0.0
-      position : LatLng;
-
-      # the icon for the marker.
-      # @since 1.0.0
-      icon : BitmapDescriptor;
-    }
-
-   
-  ```
-
-  output
-
-  ``` java
-    /*package*/ public final class SRNMarkerOptions {
-
-      public static WritableMap toWritableMap(MarkerOptions item) {
-          if (item == null) {return null;}
-          WritableMap result = new WritableNativeMap();
-          result.putMap("position", SRNLatLng.toWritableMap(item.position));
-          result.putMap("icon", SRNBitmapDescriptor.toWritableMap(item.icon));
-          result.putBoolean("visible", item.visible);
-          result.putDouble("anchorU", item.anchorU);
-          result.putDouble("anchorV", item.anchorV);
-          result.putDouble("alpha", item.alpha);
-          result.putDouble("zIndex", item.zIndex);
-          result.putBoolean("flat", item.flat);
-          result.putDouble("rotation", item.rotation);
-          result.putBoolean("draggable", item.draggable);
-          return result;
-      }
-
-      public static MarkerOptions fromReadableMap(ReadableMap data) {
-          if (data == null) {return null;}
-          MarkerOptions result = new MarkerOptions();
-          if (data.hasKey("position")) {
-            result.position = SRNLatLng.fromReadableMap(data.getMap("position"));
-          }
-          if (data.hasKey("icon")) {
-            result.icon = SRNBitmapDescriptor.fromReadableMap(data.getMap("icon"));
-          }
-          if (data.hasKey("visible")) {
-            result.visible = data.getBoolean("visible");
-          }
-          if (data.hasKey("anchorU")) {
-            result.anchorU = (float)data.getDouble("anchorU");
-          }
-          if (data.hasKey("anchorV")) {
-            result.anchorV = (float)data.getDouble("anchorV");
-          }
-          if (data.hasKey("alpha")) {
-            result.alpha = (float)data.getDouble("alpha");
-          }
-          if (data.hasKey("zIndex")) {
-            result.zIndex = (float)data.getDouble("zIndex");
-          }
-          if (data.hasKey("flat")) {
-            result.flat = data.getBoolean("flat");
-          }
-          if (data.hasKey("rotation")) {
-            result.rotation = (float)data.getDouble("rotation");
-          }
-          if (data.hasKey("draggable")) {
-            result.draggable = data.getBoolean("draggable");
-          }
-          return result;
-      }
-    }
-
-  ```
 
 ## support annotaion
 use annotaion @ReactProp(coordnate) to indicate this function is a properties in react-native
@@ -188,6 +109,52 @@ some native function need call by react, eg: maker.showInfoWindow()
 }
 ```
 
+### @ReactType : "value_nouse" WritableMap and ReadableMap
+  generate toWritableMap and fromReadableMap with record 
+  ```
+    MarkerOptions = record {
+
+      # the location for the marker.
+      # @since 1.0.0
+      position : LatLng;
+
+      # the icon for the marker.
+      # @since 1.0.0
+      icon : BitmapDescriptor;
+    }
+
+   
+  ```
+
+  output
+
+  ``` java
+    /*package*/ public final class SRNMarkerOptions {
+
+      public static WritableMap toWritableMap(MarkerOptions item) {
+          if (item == null) {return null;}
+          WritableMap result = new WritableNativeMap();
+          result.putMap("position", SRNLatLng.toWritableMap(item.position));
+          result.putMap("icon", SRNBitmapDescriptor.toWritableMap(item.icon));
+          ...
+          return result;
+      }
+
+      public static MarkerOptions fromReadableMap(ReadableMap data) {
+          if (data == null) {return null;}
+          MarkerOptions result = new MarkerOptions();
+          if (data.hasKey("position")) {
+            result.position = SRNLatLng.fromReadableMap(data.getMap("position"));
+          }
+          if (data.hasKey("icon")) {
+            result.icon = SRNBitmapDescriptor.fromReadableMap(data.getMap("icon"));
+          }
+          ...
+          return result;
+      }
+    }
+
+  ```
 
 
 # Djinni

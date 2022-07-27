@@ -72,7 +72,7 @@ class RNJavaGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
     refs.java.add("com.smap.maps.model.*");
 
     val javaName = if (r.ext.java) (ident.name + "_base") else (PRE_STR + ident.name)
-    val javaFinal = if (!r.ext.java && spec.javaUseFinalForRecord) "public final " else ""
+    val javaFinal = if (!r.ext.java && spec.javaUseFinalForRecord) "final " else ""
 
     writeFinalFile(javaName, origin, refs.java, w => {
       writeDoc(w, doc)

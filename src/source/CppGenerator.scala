@@ -255,6 +255,15 @@ class CppGenerator(spec: Spec) extends Generator(spec) {
           w.wl(": " + init(r.fields.head))
           r.fields.tail.map(f => ", " + init(f)).foreach(w.wl)
           w.wl("{}")
+       
+          // hardcode-keep same with old
+          w.wl
+          w.wl(actualSelf + "()")
+          val initEmpty = (f: Field) => idCpp.field(f.ident) + "()"
+          w.wl(": " + initEmpty(r.fields.head))
+          r.fields.tail.map(f => ", " + initEmpty(f)).foreach(w.wl)
+          w.wl("{}")
+
         }
 
         if (r.ext.cpp) {

@@ -153,7 +153,9 @@ class JavaGenerator(spec: Spec) extends Generator(spec) {
     })
     if (i.ext.cpp) {
       refs.java.add("java.util.concurrent.atomic.AtomicBoolean")
-      refs.java.add("com.snapchat.djinni.NativeObjectManager")
+      // refs.java.add("com.snapchat.djinni.NativeObjectManager")
+      // chagne to own package
+      refs.java.add("com.smap.core.jni.djinni.NativeObjectManager")
     }
 
     def writeModuleInitializer(w: IndentWriter) = {

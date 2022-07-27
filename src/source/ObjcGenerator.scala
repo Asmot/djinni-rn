@@ -224,8 +224,9 @@ class ObjcGenerator(spec: Spec) extends BaseObjcGenerator(spec) {
       if (r.fields.nonEmpty) {
           // NSObject init / new are marked unavailable. Only allow designated initializer
           // as records may have non-optional / nonnull fields.
-          w.wl("- (nonnull instancetype)init NS_UNAVAILABLE;")
-          w.wl("+ (nonnull instancetype)new NS_UNAVAILABLE;")
+          // keep same with old
+          // w.wl("- (nonnull instancetype)init NS_UNAVAILABLE;")
+          // w.wl("+ (nonnull instancetype)new NS_UNAVAILABLE;")
       }
 
       writeInitializer("-", "init")
