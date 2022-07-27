@@ -54,6 +54,7 @@ json data is
           "paramIsNumber":"bool",
           "paramIsObject":"bool",
           "paramIsBool":"bool",
+          "paramIndex": "int", // start form 0
           "firstParam":"false", // mean the frst one
           "lastParam":"false" // mean the last one
         }

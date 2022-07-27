@@ -146,7 +146,7 @@ class RNTsGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
           
           writeDoc(w, f.doc)
           // ${marshal.fieldType(f.ty)}
-          w.w(s"${f.ident.name} : ")
+          w.w(s"${f.ident.name} ?: ")
           f.ty.resolved.base match {
             case MString | MDate => w.w(s"string")
             case t: MPrimitive => t.jName match {

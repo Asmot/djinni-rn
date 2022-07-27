@@ -286,6 +286,7 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
               if (parmCounter == parmSize - 1) {
                 jsonDataParm("lastParam") = true;
               }
+              jsonDataParm("paramIndex") = parmCounter;
               parmCounter = parmCounter + 1;
               jsonDataParams = jsonDataParams :+ jsonDataParm;
             }
