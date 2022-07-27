@@ -37,10 +37,14 @@ if is record, only generate toReadableMap and fromReadableMap
 */
 class RNTsGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
 
-  this.rnJavaTemplate = utils.readFileCon(spec.rn_tsTemplateFile.get)
+  val templateDataMap = readTemplateFilesMap(spec.rn_tsTemplateFile.get) 
 
   override def getFileName(ident: Ident, typeParams: Seq[TypeParam], i: Interface) : String = {
     return marshal.typename(ident, i)
+  }
+  override def getTemplateData(annotation: Option[Annotation]) : String = {
+    val key = annotation.get.value;
+    return templateDataMap(key)
   }
 
   // no need to add null check

@@ -31,17 +31,23 @@ import scala.collection.mutable
 
 import java.io.{File, FileNotFoundException, InputStreamReader, FileInputStream, Writer}
 import java.io.StringWriter
+
 /*
 if is record, only generate toReadableMap and fromReadableMap
 */
 class RNJavaGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
-  this.rnJavaTemplate = utils.readFileCon(spec.rn_javaTemplateFile.get)
+  val templateDataMap = readTemplateFilesMap(spec.rn_javaTemplateFile.get) 
   var PRE_STR = "SRN"
 
   override def getFileName(ident: Ident, typeParams: Seq[TypeParam], i: Interface) : String = {
     val javaClass = marshal.typename(ident, i)
     val typeParamList = javaTypeParams(typeParams)
     return s"${PRE_STR}$javaClass${typeParamList}Manager"
+  }
+
+  override def getTemplateData(annotation: Option[Annotation]) : String = {
+    val key = annotation.get.value;
+    return templateDataMap(key)
   }
 
   override def writeFinalFile(ident: String, origin: String, refs: Iterable[String], f: IndentWriter => Unit) {

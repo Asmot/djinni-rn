@@ -25,7 +25,7 @@ import djinni.meta._
 import djinni.writer.IndentWriter
 import djinni.utils._
 import mustache._
-
+import scala.util.parsing.json._
 
 import scala.collection.mutable
 
@@ -41,6 +41,29 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
   val javaNonnullAnnotation = spec.javaNonnullAnnotation.map(pkg => '@' + pkg.split("\\.").last)
   val javaClassAccessModifierString = JavaAccessModifier.getCodeGenerationString(spec.javaClassAccessModifier)
   val marshal = new JavaMarshal(spec)
+
+  // TemplateFile is a json, read the all data to a map
+
+  def readTemplateFilesMap(configFile : File): scala.collection.mutable.Map[String, String] = {
+    val fileDir = configFile.getParent();
+    val configJson = utils.readFileCon(configFile);
+
+    val result = JSON.parseFull(configJson)
+    var resultMap = scala.collection.mutable.Map[String, String]();
+    result match {
+      case Some(map: Map[Any, Any]) => {
+        for (key <- map.keys) {
+          val realPath = fileDir + "/" + map(key);
+          val con = utils.readFileCon(realPath);
+          resultMap.put(s""""${key}"""", con)
+        }
+      }
+      case _ => System.out.println("invalid config")
+    }
+
+    
+    return resultMap;
+  }
 
   // child clsss support the template
   var rnJavaTemplate = "";
@@ -130,6 +153,9 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
 
   def getFileName(ident: Ident, typeParams: Seq[TypeParam], i: Interface) : String;
 
+  // different annotation will use different template data
+  def getTemplateData(annotation: Option[Annotation]) : String;
+
   def getInterfaceRef(i: Interface) : JavaRefs = {
      val refs = new JavaRefs()
       i.methods.map(m => {
@@ -163,7 +189,8 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
     val javaClass = marshal.typename(ident, i)
     var javaFileName = getFileName(ident, typeParams, i); 
     
-    val template = new Mustache(rnJavaTemplate)
+    val templateData = getTemplateData(annotation);
+    val template = new Mustache(templateData)
     var jsonDataMap = scala.collection.mutable.Map(
       "className" -> javaClass,
       "functions" -> List[scala.collection.mutable.Map[String, Any]]()
