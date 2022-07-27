@@ -57,12 +57,11 @@ json data is
         }
       ],
       "haveReturn": false,
-      "return" : {
-         "returnType" : "xx",
-         "returnIsNumber":"bool",
-         "returnIsObject":"bool",
-         "returnIsBool":"bool"
-      }
+      "returnType" : "xx",
+      "returnIsNumber":"bool",
+      "returnIsObject":"bool",
+      "returnIsBool":"bool"
+      
     },
     {
       ...

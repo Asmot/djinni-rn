@@ -228,20 +228,19 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
             // return
             val ret = marshal.returnType(m.ret)
 
-            val jsonDataReturn = scala.collection.mutable.Map[String, Any]();
             m.ret.getOrElse(None) match {
               case TypeRef(resolved) => {
                   jsonDataProp("haveReturn") = true;
-                  jsonDataReturn("returnType") = ret;
+                  jsonDataProp("returnType") = ret;
                   m.ret.get.resolved.base match {
                     case t: MPrimitive => t.jName match {
                       case "byte" | "short" | "int" | "float" | "double" | "long" => {
-                        jsonDataReturn("returnIsNumber") = true
+                        jsonDataProp("returnIsNumber") = true
                       }
-                      case "boolean" => jsonDataReturn("returnIsBool") = true
+                      case "boolean" => jsonDataProp("returnIsBool") = true
                     }
                     case df: MDef => df.defType match {
-                      case DRecord => jsonDataReturn("returnIsObject") = true
+                      case DRecord => jsonDataProp("returnIsObject") = true
                     }
                   }
                 }
@@ -253,7 +252,6 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
               nullityAnnotation + marshal.paramType(p.ty) + " " + idJava.local(p.ident)
             })
             marshal.nullityAnnotation(m.ret).foreach(w.wl)
-            jsonDataProp("return") = jsonDataReturn;
 
             // params
             jsonDataProp("haveParams") = (m.params.length > 0);
