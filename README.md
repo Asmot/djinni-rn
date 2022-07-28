@@ -5,23 +5,45 @@
   not a good ideal , but project need it
 
   ``` 
-    items: list<string> = NULL;
-    test: i32 = 2;
+    visible : bool = true;
+  	anchorU : f32 = 1;
+    anchorV : f32 = 0.5;
+	  alpha : f32 = 1;
+	  zIndex : f32 = 0;
+	  flat : bool = false;
   ```
 
 output will like this
 
   ``` java
-    final class ItemList {
-        public ArrayList<String> mItems = null;
-        public int mTest = 2;
-        ...
-    }
+    private boolean visible = true;
+    private float anchorU = 1;
+    private float anchorV = 0.5f;
+    private float alpha = 1;
+    private float zIndex = 0;
+    private boolean flat = false;
   ```
-### add setFunction
+### add seter 
 
 ``` java
-private LatLng position;
+  private LatLng position;
+
+  /**
+   * the location for the marker.
+   * @since 1.0.0
+   */
+  public LatLng getPosition() {
+      return position;
+  }
+
+  /**
+   * the location for the marker.
+   * @since 1.0.0
+   */
+  public MarkerOptions position(LatLng position) {
+      this.position = position;
+      return this;
+  }
 
 ```
 

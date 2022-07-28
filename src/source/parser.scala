@@ -131,8 +131,8 @@ private object IdlParser extends RegexParsers {
       Record(ext, fields, consts, derivingTypes)
     }
   }
-  def field: Parser[Field] = doc ~ ident ~ ":" ~ typeRef ^^ {
-    case doc~ident~_~typeRef => Field(ident, typeRef, doc)
+  def field: Parser[Field] = doc ~ ident ~ ":" ~ typeRef ~ opt("=") ~ opt(value) ^^ {
+    case doc~ident~_~typeRef~_~value => Field(ident, typeRef, doc, value)
   }
   def deriving: Parser[Set[DerivingType]] = "deriving" ~> parens(rep1sepend(ident, ",")) ^^ {
     _.map(ident => ident.name match {

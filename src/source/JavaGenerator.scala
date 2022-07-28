@@ -66,34 +66,34 @@ class JavaGenerator(spec: Spec) extends Generator(spec) {
     })
   }
 
-  def generateJavaConstants(w: IndentWriter, consts: Seq[Const]) = {
-
-    def writeJavaConst(w: IndentWriter, ty: TypeRef, v: Any): Unit = v match {
-      case l: Long if marshal.fieldType(ty).equalsIgnoreCase("long") => w.w(l.toString + "l")
-      case l: Long => w.w(l.toString)
-      case d: Double if marshal.fieldType(ty).equalsIgnoreCase("float") => w.w(d.toString + "f")
-      case d: Double => w.w(d.toString)
-      case b: Boolean => w.w(if (b) "true" else "false")
-      case s: String => w.w(s)
-      case e: EnumValue =>  w.w(s"${marshal.typename(ty)}.${idJava.enum(e)}")
-      case v: ConstRef => w.w(idJava.const(v))
-      case z: Map[_, _] => { // Value is record
-        val recordMdef = ty.resolved.base.asInstanceOf[MDef]
-        val record = recordMdef.body.asInstanceOf[Record]
-        val vMap = z.asInstanceOf[Map[String, Any]]
-        w.wl(s"new ${marshal.typename(ty)}(")
-        w.increase()
-        // Use exact sequence
-        val skipFirst = SkipFirst()
-        for (f <- record.fields) {
-          skipFirst {w.wl(",")}
-          writeJavaConst(w, f.ty, vMap.apply(f.ident.name))
-          w.w(" /* " + idJava.field(f.ident) + " */ ")
-        }
-        w.w(")")
-        w.decrease()
+  def writeJavaConst(w: IndentWriter, ty: TypeRef, v: Any): Unit = v match {
+    case l: Long if marshal.fieldType(ty).equalsIgnoreCase("long") => w.w(l.toString + "l")
+    case l: Long => w.w(l.toString)
+    case d: Double if marshal.fieldType(ty).equalsIgnoreCase("float") => w.w(d.toString + "f")
+    case d: Double => w.w(d.toString)
+    case b: Boolean => w.w(if (b) "true" else "false")
+    case s: String => w.w(s)
+    case e: EnumValue =>  w.w(s"${marshal.typename(ty)}.${idJava.enum(e)}")
+    case v: ConstRef => w.w(idJava.const(v))
+    case z: Map[_, _] => { // Value is record
+      val recordMdef = ty.resolved.base.asInstanceOf[MDef]
+      val record = recordMdef.body.asInstanceOf[Record]
+      val vMap = z.asInstanceOf[Map[String, Any]]
+      w.wl(s"new ${marshal.typename(ty)}(")
+      w.increase()
+      // Use exact sequence
+      val skipFirst = SkipFirst()
+      for (f <- record.fields) {
+        skipFirst {w.wl(",")}
+        writeJavaConst(w, f.ty, vMap.apply(f.ident.name))
+        w.w(" /* " + idJava.field(f.ident) + " */ ")
       }
+      w.w(")")
+      w.decrease()
     }
+  }
+
+  def generateJavaConstants(w: IndentWriter, consts: Seq[Const]) = {
 
     for (c <- consts) {
       writeDoc(w, c.doc)
@@ -268,10 +268,19 @@ class JavaGenerator(spec: Spec) extends Generator(spec) {
         w.wl
         generateJavaConstants(w, r.consts)
         // Field definitions.
-        // change field to private
+        // change field to private, and support default value
         for (f <- r.fields) {
           w.wl
-          w.wl(s"private ${marshal.fieldType(f.ty)} ${idJava.field(f.ident)};")
+          w.w(s"private ${marshal.fieldType(f.ty)} ${idJava.field(f.ident)}")
+          f.value.getOrElse(None) match {
+            case None => w.wl(";")
+            case _ =>  { 
+                w.w(" = ");
+                writeJavaConst(w, f.ty, f.value.get);
+                w.wl(";");
+              }
+          }
+          
         }
 
         // Constructor.

@@ -94,7 +94,9 @@ object Interface {
   case class Method(ident: Ident, params: Seq[Field], ret: Option[TypeRef], doc: Doc, static: Boolean, const: Boolean, lang: Ext, annotation : Option[Annotation])
 }
 
-case class Field(ident: Ident, ty: TypeRef, doc: Doc)
+// field support default value like const
+// value is Option
+case class Field(ident: Ident, ty: TypeRef, doc: Doc, value: Option[Any])
 
 case class ProtobufMessage(cpp: ProtobufMessage.Cpp, java: ProtobufMessage.Java, objc: Option[ProtobufMessage.Objc], ts: Option[ProtobufMessage.Ts]) extends TypeDef
 object ProtobufMessage {
