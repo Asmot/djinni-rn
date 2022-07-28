@@ -66,6 +66,8 @@ json data is
 ``` json
 {
   "className" : "xx",
+  "XXannotaion":true,
+  "classAnnotaionValue": "xx",
   "functions" : [
     {
       "XXannotaion":true,
@@ -97,6 +99,17 @@ json data is
     {
       ...
     }
+    ...
+  ],
+  "fields" : [
+    {
+      "fieldDoc":true,
+      "fieldName" : "xx",
+      "fieldType" : "xx",
+      "fieldIsNumber":"bool",
+      "fieldIsObject":"bool",
+      "fieldIsBool":"bool",
+    },
     ...
   ]
 }

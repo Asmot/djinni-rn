@@ -151,7 +151,18 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
     // enum no need to generate again can use the java directily
   }
 
+  // for interface
   def getFileName(ident: Ident, typeParams: Seq[TypeParam], i: Interface) : String;
+
+  // for record
+  def getFileName(ident: Ident, r: Record) : String;
+
+  // for recrod
+  def getRecordRefs(r : Record) : JavaRefs = {
+    val refs = new JavaRefs()
+    r.fields.foreach(f => refs.find(f.ty));
+    return refs;
+  }
 
   // different annotation will use different template data
   def getTemplateData(annotation: Option[Annotation]) : String;
@@ -168,6 +179,68 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
       return refs;
   }
   
+  override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record) {}
+  override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record, annotation: Option[Annotation]) {
+    val refs = getRecordRefs(r);
+    val templateData = getTemplateData(annotation);
+    val template = new Mustache(templateData)
+    var jsonDataMap = scala.collection.mutable.Map(
+      "className" -> ident.name,
+      "fields" -> List[scala.collection.mutable.Map[String, Any]]()
+    )
+    // class annotation
+    jsonDataMap(s"${annotation.get.name.name}Annotation") = true;
+    // remmove ""
+    jsonDataMap("classAnnotaionValue") = annotation.get.value.replaceAll(""""""","")
+
+    var jsonDataFields = List[scala.collection.mutable.Map[String, Any]]()
+
+    val javaName = getFileName(ident, r)
+    
+    writeFinalFile(javaName, origin, refs.java, w => {
+      writeDoc(w, doc)
+      javaAnnotationHeader.foreach(w.wl)
+      val self = marshal.typename(javaName, r)
+      
+      for (f <- r.fields) {
+
+        val jsonDataProp = scala.collection.mutable.Map[String, Any]();
+
+        val docWriter = new StringWriter();
+        val innerW = new IndentWriter(docWriter);
+        writeDoc(innerW, doc)
+        // doce
+        jsonDataProp.put("fieldDoc" , docWriter.toString());
+
+        // field name 
+        jsonDataProp("fieldName") = f.ident.name;
+        jsonDataProp("fieldType") = marshal.typename(f.ty);
+        
+        f.ty.resolved.base match {
+          case t: MPrimitive => t.jName match {
+            case "byte" | "short" | "int" | "float" | "double" | "long"   
+                => jsonDataProp("fieldIsNumber") = true;
+            case "boolean"
+                => jsonDataProp("fieldIsBool") = true;
+                
+          }
+          case df: MDef => df.defType match {
+            case DRecord => jsonDataProp("fieldIsObject") = true;
+            case _ => {}//w.wl(s"// not support! ${f.ident.name}")//throw new AssertionError("Unreachable")
+          }
+          case _ => {}//w.wl(s"// not support! ${f.ident.name}")
+        }
+        jsonDataFields = jsonDataFields :+ jsonDataProp;
+      }
+      jsonDataMap("fields") = jsonDataFields;
+
+
+      val formatedOutput = template.render(jsonDataMap)
+      // System.out.println(jsonDataMap)
+      w.wl(formatedOutput)
+    })
+  }
+
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface) {
     // only deal the interface which have annotation
   }
@@ -195,6 +268,11 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
       "className" -> javaClass,
       "functions" -> List[scala.collection.mutable.Map[String, Any]]()
     )
+    // class annotation
+    jsonDataMap(s"${annotation.get.name.name}Annotation") = true;
+    // remmove ""
+    jsonDataMap("classAnnotaionValue") = annotation.get.value.replaceAll(""""""","")
+
     var jsonDataFunctions = List[scala.collection.mutable.Map[String, Any]]()
     writeFinalFile(javaFileName, origin, refs.java, w => {        
       

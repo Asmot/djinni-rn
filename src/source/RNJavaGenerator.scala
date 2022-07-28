@@ -45,6 +45,11 @@ class RNJavaGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
     return s"${PRE_STR}$javaClass${typeParamList}Manager"
   }
 
+  override def getFileName(ident: Ident, r: Record) : String = {
+    return s"${PRE_STR}${ident.name}"
+  }
+
+
   override def getTemplateData(annotation: Option[Annotation]) : String = {
     val key = annotation.get.value;
     return templateDataMap(key)
@@ -61,146 +66,6 @@ class RNJavaGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
         w.wl
       }
       f(w)
-    })
-  }
-
-  override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record) {}
-  override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record, annotation: Option[Annotation]) {
-  
-    val refs = new JavaRefs()
-    r.fields.foreach(f => refs.find(f.ty))
-
-    // rn java
-    refs.java.add("com.facebook.react.bridge.ReadableMap");
-    refs.java.add("com.facebook.react.bridge.WritableMap");
-    refs.java.add("com.facebook.react.bridge.WritableNativeMap");
-    // for smap TODO add to spec
-    refs.java.add("com.smap.maps.model.*");
-
-    val javaName = if (r.ext.java) (ident.name + "_base") else (PRE_STR + ident.name)
-    val javaFinal = if (!r.ext.java && spec.javaUseFinalForRecord) "final " else ""
-
-    writeFinalFile(javaName, origin, refs.java, w => {
-      writeDoc(w, doc)
-      javaAnnotationHeader.foreach(w.wl)
-      val self = marshal.typename(javaName, r)
-
-      w.w(s"${javaClassAccessModifierString}${javaFinal}class ${self + javaTypeParams(params)}").braced {
-        w.wl
-        generateJavaConstants(w, r.consts)
-
-        // toWritableMap
-        w.wl
-        w.w(s"public static WritableMap toWritableMap(${ident.name} item)" ).braced {
-          w.wl("if (item == null) {return null;}")
-          w.wl("WritableMap result = new WritableNativeMap();")
-          for (f <- r.fields) {
-            f.ty.resolved.base match {
-              case t: MPrimitive => t.jName match {
-                case "byte" | "short" | "int" | "float" | "double" | "long"   
-                    => w.wl(s"""result.putDouble("${f.ident.name}", item.${f.ident.name});""")
-                case "boolean"
-                    => w.wl(s"""result.putBoolean("${f.ident.name}", item.${f.ident.name});""")
-                    
-              }
-              case df: MDef => df.defType match {
-                case DRecord => w.wl(s"""result.putMap("${f.ident.name}", ${PRE_STR}${marshal.typename(f.ty)}.toWritableMap(item.${f.ident.name}));""")
-                case _ => w.wl(s"// not support! ${f.ident.name}")//throw new AssertionError("Unreachable")
-              }
-              case _ => w.wl(s"// not support! ${f.ident.name}")
-            }
-          }
-          w.wl("return result;")
-        }
-        
-        // fromReadableMap
-
-        // convert readableMap to java object ,with hasKey check
-        // eg result.tilt = (float)data.getDouble("tilt");  
-        def fromReadableMapHasKeyCheck = (fieldName:String, castFieldType : String, isBool: Boolean) => {
-          if (isBool) {
-            w.wl(s"""if (data.hasKey("${fieldName}")) {""")
-            w.wl(s"""   result.${fieldName} = data.getBoolean("${fieldName}");""")
-            w.wl("}")
-          } else {
-            w.wl(s"""if (data.hasKey("${fieldName}")) {""")
-            w.wl(s"""   result.${fieldName} = (${castFieldType})data.getDouble("${fieldName}");""")
-            w.wl("}")
-          }  
-        }
-
-        w.wl
-        w.w(s"public static ${ident.name} fromReadableMap(ReadableMap data)" ).braced {
-          w.wl("if (data == null) {return null;}")
-          w.wl(s"${ident.name} result = new ${ident.name}();")
-          for (f <- r.fields) {
-            f.ty.resolved.base match {
-              case t: MPrimitive => t.jName match {
-                case "byte" | "short" | "double" | "long"   
-                    => fromReadableMapHasKeyCheck(s"${f.ident.name}", "double", false)
-                case "float" => fromReadableMapHasKeyCheck(s"${f.ident.name}", "float", false)
-                case "int" => fromReadableMapHasKeyCheck(s"${f.ident.name}", "int", false)
-                case "boolean" => fromReadableMapHasKeyCheck(s"${f.ident.name}", "boolean", true)
-              }
-              case df: MDef => df.defType match {
-                case DRecord => 
-                    w.wl(s"""if (data.hasKey("${f.ident.name}")) {""")
-                    w.wl(s"""   result.${f.ident.name} = ${PRE_STR}${marshal.typename(f.ty)}.fromReadableMap(data.getMap("${f.ident.name}"));""")
-                    w.wl(s"}")
-                case _ => w.wl(s"// not support! ${f.ident.name}")
-              }
-              case _ => w.wl(s"// not support! ${f.ident.name}")
-            }
-          }
-          w.wl("return result;")
-        }
-
-        if (spec.javaImplementAndroidOsParcelable && r.derivingTypes.contains(DerivingType.AndroidParcelable))
-          writeParcelable(w, self, r);
-
-        if (r.derivingTypes.contains(DerivingType.Ord)) {
-          def primitiveCompare(ident: Ident) {
-            w.wl(s"if (this.${idJava.field(ident)} < other.${idJava.field(ident)}) {").nested {
-              w.wl(s"tempResult = -1;")
-            }
-            w.wl(s"} else if (this.${idJava.field(ident)} > other.${idJava.field(ident)}) {").nested {
-              w.wl(s"tempResult = 1;")
-            }
-            w.wl(s"} else {").nested {
-              w.wl(s"tempResult = 0;")
-            }
-            w.wl("}")
-          }
-          w.wl
-          w.wl("@Override")
-          val nonnullAnnotation = javaNonnullAnnotation.map(_ + " ").getOrElse("")
-          w.w(s"public int compareTo($nonnullAnnotation$self other) ").braced {
-            w.wl("int tempResult;")
-            for (f <- r.fields) {
-              f.ty.resolved.base match {
-                case MString | MDate => w.wl(s"tempResult = this.${idJava.field(f.ident)}.compareTo(other.${idJava.field(f.ident)});")
-                case t: MPrimitive => primitiveCompare(f.ident)
-                case df: MDef => df.defType match {
-                  case DRecord => w.wl(s"tempResult = this.${idJava.field(f.ident)}.compareTo(other.${idJava.field(f.ident)});")
-                  case DEnum => w.w(s"tempResult = this.${idJava.field(f.ident)}.compareTo(other.${idJava.field(f.ident)});")
-                  case _ => throw new AssertionError("Unreachable")
-                }
-                case e: MExtern => e.defType match {
-                  case DRecord => if(e.java.reference) w.wl(s"tempResult = this.${idJava.field(f.ident)}.compareTo(other.${idJava.field(f.ident)});") else primitiveCompare(f.ident)
-                  case DEnum => w.w(s"tempResult = this.${idJava.field(f.ident)}.compareTo(other.${idJava.field(f.ident)});")
-                  case _ => throw new AssertionError("Unreachable")
-                }
-                case _ => throw new AssertionError("Unreachable")
-              }
-              w.w("if (tempResult != 0)").braced {
-                w.wl("return tempResult;")
-              }
-            }
-            w.wl("return 0;")
-          }
-        }
-
-      }
     })
   }
 

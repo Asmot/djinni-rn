@@ -42,6 +42,11 @@ class RNTsGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
   override def getFileName(ident: Ident, typeParams: Seq[TypeParam], i: Interface) : String = {
     return marshal.typename(ident, i)
   }
+  
+  override def getFileName(ident: Ident, r: Record) : String = {
+    return s"${ident.name}"
+  }
+
   override def getTemplateData(annotation: Option[Annotation]) : String = {
     val key = annotation.get.value;
     return templateDataMap(key)
@@ -110,12 +115,10 @@ class RNTsGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
     })
   }
 
-  override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record) {   
-  }
-  override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record, annotation: Option[Annotation]) {
-    val refs = new JavaRefs()
+  // import all Record
+  override def getRecordRefs(r : Record) : JavaRefs = {
+    val refs = super.getRecordRefs(r);
     refs.java.clear()
-
     // import all Record
     for (f <- r.fields) {
       f.ty.resolved.base match {
@@ -127,48 +130,7 @@ class RNTsGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
         
         case _ => {}//throw new AssertionError("Unreachable")
       }
-      
     }
-
-    r.fields.foreach(f => refs.find(f.ty))
-    val className = if (r.ext.java) (ident.name + "_base") else (ident.name)
-    
-    writeFinalFile(className, origin, refs.java, w => {
-      writeDoc(w, doc)
-      javaAnnotationHeader.foreach(w.wl)
-      val self = marshal.typename(className, r)
-
-      w.w(s"export type ${className} =").braced {
-        w.wl
-        // Field definitions.
-        for (f <- r.fields) {
-          w.wl
-          
-          writeDoc(w, f.doc)
-          // ${marshal.fieldType(f.ty)}
-          w.w(s"${f.ident.name} ?: ")
-          f.ty.resolved.base match {
-            case MString | MDate => w.w(s"string")
-            case t: MPrimitive => t.jName match {
-                case "boolean" => w.w(s"boolean")
-                case _ => w.w(s"number")
-              }
-            case df: MDef => df.defType match {
-              case DRecord => w.w(s"${marshal.fieldType(f.ty)}")
-              case DEnum => w.w(s"${marshal.fieldType(f.ty)}")
-              case _ => {}//throw new AssertionError("Unreachable")
-            }
-           
-            case _ => {}//throw new AssertionError("Unreachable")
-          }
-          w.wl(s";")
-      
-        }
-
-
-      }
-    })
+    return refs;
   }
-
-
 }
