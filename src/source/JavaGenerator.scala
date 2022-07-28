@@ -268,10 +268,10 @@ class JavaGenerator(spec: Spec) extends Generator(spec) {
         w.wl
         generateJavaConstants(w, r.consts)
         // Field definitions.
-        // change field to private, and support default value
+        // change field to , and support default value
         for (f <- r.fields) {
           w.wl
-          w.w(s"private ${marshal.fieldType(f.ty)} ${idJava.field(f.ident)}")
+          w.w(s"public ${marshal.fieldType(f.ty)} ${idJava.field(f.ident)}")
           f.value.getOrElse(None) match {
             case None => w.wl(";")
             case _ =>  { 
