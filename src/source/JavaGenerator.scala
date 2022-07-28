@@ -268,12 +268,17 @@ class JavaGenerator(spec: Spec) extends Generator(spec) {
         w.wl
         generateJavaConstants(w, r.consts)
         // Field definitions.
+        // change field to private
         for (f <- r.fields) {
           w.wl
-          w.wl(s"/*package*/ final ${marshal.fieldType(f.ty)} ${idJava.field(f.ident)};")
+          w.wl(s"private ${marshal.fieldType(f.ty)} ${idJava.field(f.ident)};")
         }
 
         // Constructor.
+        // add default constructor
+        w.wl
+        w.wl(s"public $self() {}")
+
         w.wl
         w.wl(s"public $self(").nestedN(2) {
           val skipFirst = SkipFirst()
@@ -298,6 +303,15 @@ class JavaGenerator(spec: Spec) extends Generator(spec) {
           marshal.nullityAnnotation(f.ty).foreach(w.wl)
           w.w("public " + marshal.returnType(Some(f.ty)) + " " + idJava.method("get_" + f.ident.name) + "()").braced {
             w.wl("return " + idJava.field(f.ident) + ";")
+          }
+
+          // add set function and return this
+          w.wl
+          writeDoc(w, f.doc)
+          marshal.nullityAnnotation(f.ty).foreach(w.wl)
+          w.w(s"public $self " + f.ident.name + s"(${marshal.returnType(Some(f.ty))} ${idJava.local(f.ident)})").braced {
+            w.wl(s"this.${idJava.field(f.ident)} = ${idJava.local(f.ident)};")
+            w.wl("return this;")
           }
         }
 

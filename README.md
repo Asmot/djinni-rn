@@ -1,6 +1,7 @@
 # changed
 
-## java support default value in record
+## Record
+### java support default value in record
   not a good ideal , but project need it
 
   ``` 
@@ -17,7 +18,12 @@ output will like this
         ...
     }
   ```
+### add setFunction
 
+``` java
+private LatLng position;
+
+```
 
 ## support annotaion
 use annotaion @ReactProp(coordnate) to indicate this function is a properties in react-native
