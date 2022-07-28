@@ -208,7 +208,7 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
 
         val docWriter = new StringWriter();
         val innerW = new IndentWriter(docWriter);
-        writeDoc(innerW, doc)
+        writeDoc(innerW, f.doc)
         // doce
         jsonDataProp.put("fieldDoc" , docWriter.toString());
 
