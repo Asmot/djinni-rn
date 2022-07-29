@@ -358,7 +358,9 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
                 } 
                 case MList => {
                   jsonDataParm("paramIsObject") = true
-                  System.out.println(jsonDataParm)
+                  jsonDataParm("paramIsList") = true
+                  // if is list paramType will be the type in <T>
+                  jsonDataParm("paramType") = marshal.paramType(parm_field.ty.resolved.args.head)
                 }
               }
               // record the param is first or last

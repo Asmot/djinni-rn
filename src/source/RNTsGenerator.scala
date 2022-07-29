@@ -67,6 +67,10 @@ class RNTsGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
                 case DEnum => refs.java.add(s"${marshal.fieldType(p.ty)}");
                 case _ => {}//throw new AssertionError("Unreachable")
               }
+              case MList => {
+                // if is list paramType will be the type in <T>
+                refs.java.add(s"${marshal.paramType(p.ty.resolved.args.head)}");
+              }
               
               case _ => {}//throw new AssertionError("Unreachable")
             }
