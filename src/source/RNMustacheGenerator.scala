@@ -355,6 +355,10 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
                 }
                 case df: MDef => df.defType match {
                   case DRecord => jsonDataParm("paramIsObject") = true
+                } 
+                case MList => {
+                  jsonDataParm("paramIsObject") = true
+                  System.out.println(jsonDataParm)
                 }
               }
               // record the param is first or last
@@ -370,6 +374,7 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
             }
             jsonDataProp("params") = jsonDataParams;
             jsonDataFunctions = jsonDataFunctions :+ jsonDataProp;
+            
             
           }
           case None => {};
