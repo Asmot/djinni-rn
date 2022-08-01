@@ -50,6 +50,9 @@ object Main {
     var rn_tsOutFolder: Option[File] = None
     var rn_tsTemplateFile: Option[File] = None
 
+    var rn_ocOutFolder: Option[File] = None
+    var rn_ocTemplateFile: Option[File] = None
+
     var javaClassAccessModifier: JavaAccessModifier.Value = JavaAccessModifier.Public
     var javaCppException: Option[String] = None
     var javaAnnotation: Option[String] = None
@@ -146,6 +149,11 @@ object Main {
         .text("The output for the rn ts files (Generator disabled if unspecified).")
       opt[File]("rn-ts-template-file").valueName("<in-file>").foreach(x => rn_tsTemplateFile = Some(x))
         .text("The template file, which will be used when generate react native ts bridge files")
+
+      opt[File]("rn-oc-out").valueName("<out-folder>").foreach(x => rn_ocOutFolder = Some(x))
+        .text("The output for the rn oc bridge files (Generator disabled if unspecified).")
+      opt[File]("rn-oc-template-file").valueName("<in-file>").foreach(x => rn_ocTemplateFile = Some(x))
+        .text("The template file, which will be used when generate react native oc bridge files")
       
        
       opt[JavaAccessModifier.Value]("java-class-access-modifier").valueName("<public/package>").foreach(x => javaClassAccessModifier = x)
@@ -391,6 +399,9 @@ object Main {
 
       rn_tsOutFolder,
       rn_tsTemplateFile,
+
+      rn_ocOutFolder,
+      rn_ocTemplateFile,
 
       javaOutFolder,
       javaPackage,

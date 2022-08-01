@@ -39,6 +39,8 @@ package object generatorTools {
                    rn_tsOutFolder: Option[File] = None,
                    rn_tsTemplateFile: Option[File] = None,
 
+                   rn_ocOutFolder: Option[File] = None,
+                   rn_ocTemplateFile: Option[File] = None,
 
                    javaOutFolder: Option[File],
                    javaPackage: Option[String],
@@ -279,6 +281,12 @@ package object generatorTools {
           createFolder("Java", spec.rn_tsOutFolder.get)
         }
         new RNTsGenerator(spec).generate(idl)
+      }
+      if (spec.rn_ocOutFolder.isDefined) {
+        if (!spec.skipGeneration) {
+          createFolder("Java", spec.rn_ocOutFolder.get)
+        }
+        new RNOCGenerator(spec).generate(idl)
       }
       if (spec.jniOutFolder.isDefined) {
         if (!spec.skipGeneration) {

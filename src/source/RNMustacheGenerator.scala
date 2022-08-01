@@ -88,6 +88,9 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
 
   def writeFinalFile(ident: String, origin: String, refs: Iterable[String], f: IndentWriter => Unit);
 
+  // before writeFinalFile can do some thing
+  def writeFinalFileBefore(ident: String, origin: String, refs: Iterable[String], jsonData: Any, annotation: Option[Annotation]) = {}
+
   def generateJavaConstants(w: IndentWriter, consts: Seq[Const]) = {
 
     def writeJavaConst(w: IndentWriter, ty: TypeRef, v: Any): Unit = v match {
@@ -182,8 +185,6 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
   override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record) {}
   override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record, annotation: Option[Annotation]) {
     val refs = getRecordRefs(r);
-    val templateData = getTemplateData(annotation);
-    val template = new Mustache(templateData)
     var jsonDataMap = scala.collection.mutable.Map(
       "className" -> ident.name,
       "fields" -> List[scala.collection.mutable.Map[String, Any]]()
@@ -196,49 +197,55 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
     var jsonDataFields = List[scala.collection.mutable.Map[String, Any]]()
 
     val javaName = getFileName(ident, r)
+
+    val self = marshal.typename(javaName, r)
+      
+    for (f <- r.fields) {
+
+      val jsonDataProp = scala.collection.mutable.Map[String, Any]();
+
+      val docWriter = new StringWriter();
+      val innerW = new IndentWriter(docWriter);
+      writeDoc(innerW, f.doc)
+      // doce
+      jsonDataProp.put("fieldDoc" , docWriter.toString());
+
+      // field name 
+      jsonDataProp("fieldName") = f.ident.name;
+      jsonDataProp("fieldType") = marshal.typename(f.ty);
+      
+      f.ty.resolved.base match {
+        case t: MPrimitive => t.jName match {
+          case "byte" | "short" | "int" | "float" | "double" | "long"   
+              => jsonDataProp("fieldIsNumber") = true;
+          case "boolean"
+              => jsonDataProp("fieldIsBool") = true;
+              
+        }
+        case df: MDef => df.defType match {
+          case DRecord => jsonDataProp("fieldIsObject") = true;
+          case _ => {}//w.wl(s"// not support! ${f.ident.name}")//throw new AssertionError("Unreachable")
+        }
+        case _ => {}//w.wl(s"// not support! ${f.ident.name}")
+      }
+      jsonDataFields = jsonDataFields :+ jsonDataProp;
+    }
+    jsonDataMap("fields") = jsonDataFields;
     
+    val templateData = getTemplateData(annotation);
+    val template = new Mustache(templateData)
+
+    writeFinalFileBefore(javaName, origin, refs.java, jsonDataMap, annotation)
+
     writeFinalFile(javaName, origin, refs.java, w => {
       writeDoc(w, doc)
       javaAnnotationHeader.foreach(w.wl)
-      val self = marshal.typename(javaName, r)
-      
-      for (f <- r.fields) {
-
-        val jsonDataProp = scala.collection.mutable.Map[String, Any]();
-
-        val docWriter = new StringWriter();
-        val innerW = new IndentWriter(docWriter);
-        writeDoc(innerW, f.doc)
-        // doce
-        jsonDataProp.put("fieldDoc" , docWriter.toString());
-
-        // field name 
-        jsonDataProp("fieldName") = f.ident.name;
-        jsonDataProp("fieldType") = marshal.typename(f.ty);
-        
-        f.ty.resolved.base match {
-          case t: MPrimitive => t.jName match {
-            case "byte" | "short" | "int" | "float" | "double" | "long"   
-                => jsonDataProp("fieldIsNumber") = true;
-            case "boolean"
-                => jsonDataProp("fieldIsBool") = true;
-                
-          }
-          case df: MDef => df.defType match {
-            case DRecord => jsonDataProp("fieldIsObject") = true;
-            case _ => {}//w.wl(s"// not support! ${f.ident.name}")//throw new AssertionError("Unreachable")
-          }
-          case _ => {}//w.wl(s"// not support! ${f.ident.name}")
-        }
-        jsonDataFields = jsonDataFields :+ jsonDataProp;
-      }
-      jsonDataMap("fields") = jsonDataFields;
-
-
       val formatedOutput = template.render(jsonDataMap)
-      // System.out.println(jsonDataMap)
       w.wl(formatedOutput)
+      
     })
+    
+    
   }
 
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface) {
@@ -274,118 +281,118 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
     jsonDataMap("classAnnotaionValue") = annotation.get.value.replaceAll(""""""","")
 
     var jsonDataFunctions = List[scala.collection.mutable.Map[String, Any]]()
-    writeFinalFile(javaFileName, origin, refs.java, w => {        
-      
-      var counter = 1;
-      val throwException = spec.javaCppException.fold("")(" throws " + _)
-      // no return will set to prop
-      for (m <- i.methods if !m.static) {
-        // only generate with annotation
-        // if have annotation generate a ReactProp name is the annotation value
-        // and change the overlay value call the same function name
-        m.annotation.getOrElse(None) match {
-          case Annotation(ident, value) => {    
 
-            val jsonDataProp = scala.collection.mutable.Map[String, Any]();
+    var counter = 1;
+    val throwException = spec.javaCppException.fold("")(" throws " + _)
+    // no return will set to prop
+    for (m <- i.methods if !m.static) {
+      // only generate with annotation
+      // if have annotation generate a ReactProp name is the annotation value
+      // and change the overlay value call the same function name
+      m.annotation.getOrElse(None) match {
+        case Annotation(ident, value) => {    
 
-            val docWriter = new StringWriter();
-            val innerW = new IndentWriter(docWriter);
-            writeMethodDoc(innerW, m, idJava.local)
-            // doce
-            jsonDataProp.put("functionDoc" , docWriter.toString());
-            // annotation
-            jsonDataProp(s"${ident.name}Annotation") = true;
-             // remmove ""
-            jsonDataProp("annotaionValue") = value.replaceAll(""""""","")
+          val jsonDataProp = scala.collection.mutable.Map[String, Any]();
 
-            // function name and index (id)
-            jsonDataProp("functionName") = m.ident.name;
-            jsonDataProp("functionNameId") = counter;
-            counter = counter + 1;
+          val docWriter = new StringWriter();
+          val innerW = new IndentWriter(docWriter);
+          writeMethodDoc(innerW, m, idJava.local)
+          // doce
+          jsonDataProp.put("functionDoc" , docWriter.toString());
+          // annotation
+          jsonDataProp(s"${ident.name}Annotation") = true;
+            // remmove ""
+          jsonDataProp("annotaionValue") = value.replaceAll(""""""","")
 
-            // return
-            val ret = marshal.returnType(m.ret)
+          // function name and index (id)
+          jsonDataProp("functionName") = m.ident.name;
+          jsonDataProp("functionNameId") = counter;
+          counter = counter + 1;
 
-            m.ret.getOrElse(None) match {
-              case TypeRef(resolved) => {
-                  jsonDataProp("haveReturn") = true;
-                  jsonDataProp("returnType") = ret;
-                  m.ret.get.resolved.base match {
-                    case t: MPrimitive => t.jName match {
-                      case "byte" | "short" | "int" | "float" | "double" | "long" => {
-                        jsonDataProp("returnIsNumber") = true
-                      }
-                      case "boolean" => jsonDataProp("returnIsBool") = true
+          // return
+          val ret = marshal.returnType(m.ret)
+
+          m.ret.getOrElse(None) match {
+            case TypeRef(resolved) => {
+                jsonDataProp("haveReturn") = true;
+                jsonDataProp("returnType") = ret;
+                m.ret.get.resolved.base match {
+                  case t: MPrimitive => t.jName match {
+                    case "byte" | "short" | "int" | "float" | "double" | "long" => {
+                      jsonDataProp("returnIsNumber") = true
                     }
-                    case df: MDef => df.defType match {
-                      case DRecord => jsonDataProp("returnIsObject") = true
-                    }
+                    case "boolean" => jsonDataProp("returnIsBool") = true
+                  }
+                  case df: MDef => df.defType match {
+                    case DRecord => jsonDataProp("returnIsObject") = true
                   }
                 }
-              case None => jsonDataProp("haveReturn") = false;
-            }
-            
-            val params = m.params.map(p => {
-              val nullityAnnotation = marshal.nullityAnnotation(p.ty).map(_ + " ").getOrElse("")
-              nullityAnnotation + marshal.paramType(p.ty) + " " + idJava.local(p.ident)
-            })
-            marshal.nullityAnnotation(m.ret).foreach(w.wl)
-
-            // params
-            jsonDataProp("haveParams") = (m.params.length > 0);
-            jsonDataProp("oneParam") = (m.params.length == 1);
-            jsonDataProp("params") = List[scala.collection.mutable.Map[String, Any]]();            
-
-            var jsonDataParams = List[scala.collection.mutable.Map[String, Any]]();            
-            var parmCounter = 0;
-            var parmSize = m.params.length
-            for (parm <- m.params) {
-              val parm_field = parm;
-
-              var jsonDataParm = scala.collection.mutable.Map[String, Any]();
-              jsonDataParm("paramName") = parm_field.ident.name
-              jsonDataParm("paramType") = marshal.paramType(parm_field.ty)
-              
-              parm_field.ty.resolved.base match {
-                case t: MPrimitive => t.jName match {
-                  case "byte" | "short" | "int" | "float" | "double" | "long" => {
-                    jsonDataParm("paramIsNumber") = true
-                  }
-                  case "boolean" => jsonDataParm("paramIsBool") = true
-                }
-                case df: MDef => df.defType match {
-                  case DRecord => jsonDataParm("paramIsObject") = true
-                } 
-                case MList => {
-                  jsonDataParm("paramIsObject") = true
-                  jsonDataParm("paramIsList") = true
-                  // if is list paramType will be the type in <T>
-                  jsonDataParm("paramType") = marshal.paramType(parm_field.ty.resolved.args.head)
-                }
               }
-              // record the param is first or last
-              if (parmCounter == 0) {
-                jsonDataParm("firstParam") = true;
-              }
-              if (parmCounter == parmSize - 1) {
-                jsonDataParm("lastParam") = true;
-              }
-              jsonDataParm("paramIndex") = parmCounter;
-              parmCounter = parmCounter + 1;
-              jsonDataParams = jsonDataParams :+ jsonDataParm;
-            }
-            jsonDataProp("params") = jsonDataParams;
-            jsonDataFunctions = jsonDataFunctions :+ jsonDataProp;
-            
-            
+            case None => jsonDataProp("haveReturn") = false;
           }
-          case None => {};
+          
+          val params = m.params.map(p => {
+            val nullityAnnotation = marshal.nullityAnnotation(p.ty).map(_ + " ").getOrElse("")
+            nullityAnnotation + marshal.paramType(p.ty) + " " + idJava.local(p.ident)
+          })
+
+          // params
+          jsonDataProp("haveParams") = (m.params.length > 0);
+          jsonDataProp("oneParam") = (m.params.length == 1);
+          jsonDataProp("params") = List[scala.collection.mutable.Map[String, Any]]();            
+
+          var jsonDataParams = List[scala.collection.mutable.Map[String, Any]]();            
+          var parmCounter = 0;
+          var parmSize = m.params.length
+          for (parm <- m.params) {
+            val parm_field = parm;
+
+            var jsonDataParm = scala.collection.mutable.Map[String, Any]();
+            jsonDataParm("paramName") = parm_field.ident.name
+            jsonDataParm("paramType") = marshal.paramType(parm_field.ty)
+            
+            parm_field.ty.resolved.base match {
+              case t: MPrimitive => t.jName match {
+                case "byte" | "short" | "int" | "float" | "double" | "long" => {
+                  jsonDataParm("paramIsNumber") = true
+                }
+                case "boolean" => jsonDataParm("paramIsBool") = true
+              }
+              case df: MDef => df.defType match {
+                case DRecord => jsonDataParm("paramIsObject") = true
+              } 
+              case MList => {
+                jsonDataParm("paramIsObject") = true
+                jsonDataParm("paramIsList") = true
+                // if is list paramType will be the type in <T>
+                jsonDataParm("paramType") = marshal.paramType(parm_field.ty.resolved.args.head)
+              }
+            }
+            // record the param is first or last
+            if (parmCounter == 0) {
+              jsonDataParm("firstParam") = true;
+            }
+            if (parmCounter == parmSize - 1) {
+              jsonDataParm("lastParam") = true;
+            }
+            jsonDataParm("paramIndex") = parmCounter;
+            parmCounter = parmCounter + 1;
+            jsonDataParams = jsonDataParams :+ jsonDataParm;
+          }
+          jsonDataProp("params") = jsonDataParams;
+          jsonDataFunctions = jsonDataFunctions :+ jsonDataProp;
+          
+          
         }
-        
+        case None => {};
       }
-      jsonDataMap("functions") = jsonDataFunctions;
+      
+    }
+    jsonDataMap("functions") = jsonDataFunctions;
+
+    writeFinalFileBefore(javaFileName, origin, refs.java, jsonDataMap, annotation);
+    writeFinalFile(javaFileName, origin, refs.java, w => {        
       val formatedOutput = template.render(jsonDataMap)
-      // System.out.println(jsonDataMap)
       w.wl(formatedOutput)
       
     })
