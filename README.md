@@ -1,7 +1,7 @@
 # changed
 
 ## Record
-### java support default value in record
+### java oc and c++ support default value in record
   not a good ideal , but project need it
 
   ``` 
@@ -23,6 +23,42 @@ output will like this
     private float zIndex = 0;
     private boolean flat = false;
   ```
+
+  ``` cpp
+    - (nonnull instancetype)init {
+      if (self = [super init]) {
+          _position = [[MSLatLng alloc] initWithLatitude:0
+                  longitude:0];
+          _icon = [[MSBitmapDescriptor alloc] initWithId:0
+                  width:0
+                  height:0];
+          _visible = YES;
+          _anchorU = 1;
+          _anchorV = 0.5f;
+          _alpha = 1;
+          _zIndex = 0;
+          _flat = NO;
+          _rotation = 0;
+          _draggable = NO;
+      }
+      return self;
+  }
+  ```
+
+  ``` c++
+    LatLng position = LatLng(
+        0 /* latitude */ ,
+        0 /* longitude */ );
+    BitmapDescriptor icon = BitmapDescriptor(
+        0 /* id */ ,
+        0 /* width */ ,
+        0 /* height */ );
+    bool visible = true;
+    float anchorU = 1;
+    float anchorV = 0.5f;
+  ```
+
+
 ### add seter 
 
 ``` java

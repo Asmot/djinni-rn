@@ -157,39 +157,39 @@ class CppGenerator(spec: Spec) extends Generator(spec) {
     }
   }
 
-  def generateCppConstants(w: IndentWriter, consts: Seq[Const], selfName: String) = {
-    def writeCppConst(w: IndentWriter, ty: TypeRef, v: Any): Unit = v match {
-      case l: Long => w.w(l.toString)
-      case d: Double if marshal.fieldType(ty) == "float" => w.w(d.toString + "f")
-      case d: Double => w.w(d.toString)
-      case b: Boolean => w.w(if (b) "true" else "false")
-      case s: String => w.w("{" + s + "}")
-      case e: EnumValue => w.w(marshal.typename(ty) + "::" + idCpp.enum(e.name))
-      case v: ConstRef => w.w(selfName + "::" + idCpp.const(v))
-      case z: Map[_, _] => { // Value is record
-        val recordMdef = ty.resolved.base.asInstanceOf[MDef]
-        val record = recordMdef.body.asInstanceOf[Record]
-        val vMap = z.asInstanceOf[Map[String, Any]]
-        w.wl(marshal.typename(ty) + "(")
-        w.increase()
-        // Use exact sequence
-        val skipFirst = SkipFirst()
-        for (f <- record.fields) {
-          skipFirst {w.wl(",")}
-          writeCppConst(w, f.ty, vMap.apply(f.ident.name))
-          w.w(" /* " + idCpp.field(f.ident) + " */ ")
-        }
-        w.w(")")
-        w.decrease()
+  def writeCppConst(w: IndentWriter, ty: TypeRef, v: Any, selfName: String): Unit = v match {
+    case l: Long => w.w(l.toString)
+    case d: Double if marshal.fieldType(ty) == "float" => w.w(d.toString + "f")
+    case d: Double => w.w(d.toString)
+    case b: Boolean => w.w(if (b) "true" else "false")
+    case s: String => w.w("{" + s + "}")
+    case e: EnumValue => w.w(marshal.typename(ty) + "::" + idCpp.enum(e.name))
+    case v: ConstRef => w.w(selfName + "::" + idCpp.const(v))
+    case z: Map[_, _] => { // Value is record
+      val recordMdef = ty.resolved.base.asInstanceOf[MDef]
+      val record = recordMdef.body.asInstanceOf[Record]
+      val vMap = z.asInstanceOf[Map[String, Any]]
+      w.wl(marshal.typename(ty) + "(")
+      w.increase()
+      // Use exact sequence
+      val skipFirst = SkipFirst()
+      for (f <- record.fields) {
+        skipFirst {w.wl(",")}
+        writeCppConst(w, f.ty, vMap.apply(f.ident.name), selfName)
+        w.w(" /* " + idCpp.field(f.ident) + " */ ")
       }
+      w.w(")")
+      w.decrease()
     }
+  }
 
+  def generateCppConstants(w: IndentWriter, consts: Seq[Const], selfName: String) = {
     val skipFirst = SkipFirst()
     for (c <- consts) {
       skipFirst{ w.wl }
       if (!shouldConstexpr(c)){
         w.w(s"${marshal.fieldType(c.ty)} const $selfName::${idCpp.const(c.ident)} = ")
-        writeCppConst(w, c.ty, c.value)
+        writeCppConst(w, c.ty, c.value, selfName)
         w.wl(";")
       }
     }
@@ -224,7 +224,15 @@ class CppGenerator(spec: Spec) extends Generator(spec) {
         // Field definitions.
         for (f <- r.fields) {
           writeDoc(w, f.doc)
-          w.wl(marshal.fieldType(f.ty) + " " + idCpp.field(f.ident) + ";")
+          w.w(marshal.fieldType(f.ty) + " " + idCpp.field(f.ident))
+          f.value.getOrElse(None) match {
+            case None => w.wl(";");
+            case _ =>  { 
+                w.w(s" = ");
+                writeCppConst(w, f.ty, f.value.get, actualSelf);
+                w.wl(";");
+              }
+          }
         }
 
         if (r.derivingTypes.contains(DerivingType.Eq)) {

@@ -269,6 +269,26 @@ class ObjcGenerator(spec: Spec) extends BaseObjcGenerator(spec) {
       w.wl
       w.wl(s"@implementation $self")
       w.wl
+
+      // Constructor default, set the default value 
+      w.w(s"- (nonnull instancetype)init")
+      w.braced {
+        w.w("if (self = [super init])").braced {
+          for (f <- r.fields) {
+            f.value.getOrElse(None) match {
+              case None => {}
+              case _ =>  { 
+                  w.w(s"_${idObjc.field(f.ident)} = ");
+                  writeObjcConstValue(w, f.ty, f.value.get, noBaseSelf);
+                  w.wl(";");
+                }
+            }
+          }
+        }
+        w.wl("return self;")
+      }
+      w.wl
+
       // Constructor from all fields (not copying)
       val init = s"- (nonnull instancetype)init$firstInitializerArg"
       writeAlignedObjcCall(w, init, r.fields, "", f => (idObjc.field(f.ident), s"(${marshal.paramType(f.ty)})${idObjc.local(f.ident)}"))
