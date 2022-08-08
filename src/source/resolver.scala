@@ -242,13 +242,14 @@ private def resolveRecord(scope: Scope, r: Record) {
         case _ =>
       }
       case df: MDef => df.defType match {
-        case DInterface =>
-          throw new Error(f.ident.loc, "Interface reference cannot live in a record").toException
+        // case DInterface =>
+        //   throw new Error(f.ident.loc, "Interface reference cannot live in a record").toException
         case DRecord =>
           val record = df.body.asInstanceOf[Record]
           if (!r.derivingTypes.subsetOf(record.derivingTypes))
             throw new Error(f.ident.loc, s"Some deriving required is not implemented in record ${f.ident.name}").toException
         case DEnum =>
+        case _ =>
       }
       case e: MExtern => e.defType match {
         case DInterface =>
