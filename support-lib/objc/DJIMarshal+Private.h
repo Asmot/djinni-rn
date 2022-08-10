@@ -128,6 +128,19 @@ struct String {
     }
 };
 
+struct MPlatformSystemView {
+    using CppType = int64_t;
+    using ObjcType = UIView*;
+
+    static CppType toCpp(ObjcType x) noexcept {
+        assert(x);
+        return (int64_t)x;
+    }
+    //TODO: hardcode, how to convert int64 (address) to a UIView
+    static ObjcType fromCpp(CppType x) noexcept { return nil; }
+};
+
+
 template<int wcharTypeSize>
 static NSStringEncoding getWCharEncoding()
 {

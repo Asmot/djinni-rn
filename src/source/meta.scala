@@ -102,6 +102,8 @@ case object MList extends MOpaque { val numParams = 1; val idlName = "list" }
 case object MSet extends MOpaque { val numParams = 1; val idlName = "set" }
 case object MMap extends MOpaque { val numParams = 2; val idlName = "map" }
 case object MArray extends MOpaque { val numParams = 1; val idlName = "array"}
+// support Android and iOS  Android: android.view.View iOS: UIView
+case object MPlatformSystemView extends MOpaque { val numParams = 0; val idlName = "PlatformSystemView"}
 
 val defaults: Map[String,MOpaque] = immutable.HashMap(
   ("i8",   MPrimitive("i8",   "byte",    "jbyte",    "int8_t",  "Byte",    "B", "int8_t",  "NSNumber")),
@@ -118,7 +120,8 @@ val defaults: Map[String,MOpaque] = immutable.HashMap(
   ("list", MList),
   ("set", MSet),
   ("map", MMap),
-  ("array", MArray))
+  ("array", MArray),
+  ("PlatformSystemView", MPlatformSystemView))
 
 def isInterface(ty: MExpr): Boolean = {
   ty.base match {
