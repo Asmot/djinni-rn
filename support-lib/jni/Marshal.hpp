@@ -296,6 +296,25 @@ namespace djinni
         const jmethodID method_get_time { jniGetMethodID(clazz.get(), "getTime", "()J") };
     };
 
+    struct MPlatformSystemView
+    {
+        using CppType = int64_t;
+        using JniType = jobject;
+
+        using Boxed = MPlatformSystemView;
+
+        static CppType toCpp(JNIEnv* jniEnv, JniType j)
+        {
+            return (int64_t)j;
+        }
+
+        static LocalRef<JniType> fromCpp(JNIEnv* jniEnv, const CppType& c)
+        {
+            // view will not from cpp
+            return LocalRef<JniType>{};
+        }
+    };
+
     template <template <class> class OptionalType, class T>
     struct Optional
     {
