@@ -135,6 +135,13 @@ def isOptional(ty: MExpr): Boolean = {
   ty.base == MOptional && ty.args.length == 1
 }
 
+def isRecord(ty: MExpr): Boolean = {
+  ty.base match {
+    case d: MDef => d.defType == DRecord
+    case _ => false
+  }
+}
+
 def isOptionalInterface(ty: MExpr): Boolean = {
   isOptional(ty) && isInterface(ty.args.head)
 }

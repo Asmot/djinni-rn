@@ -276,7 +276,14 @@ class ObjcGenerator(spec: Spec) extends BaseObjcGenerator(spec) {
         w.w("if (self = [super init])").braced {
           for (f <- r.fields) {
             f.value.getOrElse(None) match {
-              case None => {}
+              case None => {
+                  // reocrd call default init constructor
+                  if (isRecord(f.ty.resolved)) {
+                      w.w(s"_${idObjc.field(f.ident)} = ");
+                      w.w(s"[[${marshal.typename(f.ty)} alloc] init]")
+                      w.wl(";");
+                  }
+              }
               case _ =>  { 
                   w.w(s"_${idObjc.field(f.ident)} = ");
                   writeObjcConstValue(w, f.ty, f.value.get, noBaseSelf);
