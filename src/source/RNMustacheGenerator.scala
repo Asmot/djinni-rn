@@ -226,6 +226,12 @@ abstract class RNMUstacheGenerator(spec: Spec) extends Generator(spec) {
           case DRecord => jsonDataProp("fieldIsObject") = true;
           case _ => {}//w.wl(s"// not support! ${f.ident.name}")//throw new AssertionError("Unreachable")
         }
+        case MList => {
+          jsonDataProp("fieldIsObject") = true
+          jsonDataProp("fieldIsList") = true
+          // if is list paramType will be the type in <T>
+          jsonDataProp("fieldType") = marshal.paramType(f.ty.resolved.args.head)
+        }
         case _ => {}//w.wl(s"// not support! ${f.ident.name}")
       }
       jsonDataFields = jsonDataFields :+ jsonDataProp;

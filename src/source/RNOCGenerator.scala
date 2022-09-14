@@ -120,7 +120,7 @@ class RNOCGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
         
         refs.foreach(s => {
           // hard code remove CheckForNull and Nonnull
-          if (s"${s}" contains "javax.") {
+          if ((s"${s}" contains "javax.") || (s"${s}" contains "java.")) {
           } else {
             w.wl(s"""#import "${PRE_STR}${s}.h"""")
           }
@@ -144,7 +144,7 @@ class RNOCGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
         
         refs.foreach(s => {
           // hard code remove CheckForNull and Nonnull
-          if (s"${s}" contains "javax.") {
+          if ((s"${s}" contains "javax.") || (s"${s}" contains "java.")) {
           } else {
             w.wl(s"""#import "${PRE_STR}${s}.h"""")
           }
@@ -164,6 +164,10 @@ class RNOCGenerator(spec: Spec) extends RNMUstacheGenerator(spec) {
           case DRecord => refs.java.add(s"${marshal.fieldType(f.ty)}");
           case DEnum => refs.java.add(s"${marshal.fieldType(f.ty)}");
           case _ => {}//throw new AssertionError("Unreachable")
+        }
+        case MList => {
+          // if is list paramType will be the type in <T>
+          refs.java.add(s"${marshal.paramType(f.ty.resolved.args.head)}");
         }
         
         case _ => {}//throw new AssertionError("Unreachable")

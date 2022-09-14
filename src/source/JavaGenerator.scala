@@ -281,7 +281,16 @@ class JavaGenerator(spec: Spec) extends Generator(spec) {
           w.wl
           w.w(s"public ${marshal.fieldType(f.ty)} ${idJava.field(f.ident)}")
           f.value.getOrElse(None) match {
-            case None => w.wl(";")
+            case None => {
+               // reocrd call default init constructor
+                if (isRecord(f.ty.resolved)) {
+                    w.w(" = ");
+                    w.w(s" new ${marshal.typename(f.ty)}()")
+                    w.wl(";");
+                } else {
+                  w.wl(";")
+                }
+            }
             case _ =>  { 
                 w.w(" = ");
                 writeJavaConst(w, f.ty, f.value.get);

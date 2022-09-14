@@ -146,6 +146,7 @@ json data is
       "fieldIsNumber":"bool",
       "fieldIsObject":"bool",
       "fieldIsBool":"bool",
+      "fieldIsList":"bool"
     },
     ...
   ]
